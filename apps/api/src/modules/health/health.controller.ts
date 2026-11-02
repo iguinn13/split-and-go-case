@@ -1,9 +1,18 @@
 import { Controller, Get } from '@nestjs/common';
+import { AppError } from '../../common/errors/app-error.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
 
 @Controller('health')
 export class HealthController {
+  constructor(private readonly prisma: PrismaService) {}
+
   @Get()
-  check(): { status: 'ok' } {
-    return { status: 'ok' };
+  async check(): Promise<{ status: 'ok'; database: 'up' }> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      throw new AppError('INTERNAL_ERROR', 503, 'Database unavailable');
+    }
+    return { status: 'ok', database: 'up' };
   }
 }

@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GroupStatus {
+  OPEN
+  CLOSED
+}
+
+enum SplitType {
+  EQUAL
+  PERCENTAGE
+  FIXED
+}
+
+enum TransferStatus {
+  PENDING
+  PAID
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  ownedGroups Group[]
+  memberships GroupMember[]
+  expenses    Expense[]
+}
+
+model Group {
+  id           String      @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  baseCurrency String      @default("BRL") // immutable base currency
+  status       GroupStatus @default(OPEN)
+  ownerId      String      @db.Uuid
+  closedAt     DateTime?
+  createdAt    DateTime    @default(now())
+
+  owner     User                 @relation(fields: [ownerId], references: [id])
+  members   GroupMember[]
+  expenses  Expense[]
+  transfers SettlementTransfer[]
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @db.Uuid
+  userId    String?  @db.Uuid
+  name      String
+  email     String?
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id])
+
+  paidExpenses  Expense[]
+  shares        ExpenseShare[]
+  transfersFrom SettlementTransfer[] @relation("TransferFrom")
+  transfersTo   SettlementTransfer[] @relation("TransferTo")
+
+  @@unique([groupId, userId])
+  @@unique([groupId, email])
+  @@index([userId])
+  @@index([email])
+  // Case-insensitive unique name per group: unique index on (groupId, lower(name)) created in the migration SQL.
+}
+
+model Expense {
+  id                  String    @id @default(uuid()) @db.Uuid
+  groupId             String    @db.Uuid
+  description         String
+  currency            String // expense currency
+  originalAmountMinor Int // in the minor unit of `currency`
+  exchangeRate        Decimal   @db.Decimal(18, 8) // 1 unit of `currency` in base currency; snapshot
+  amountMinor         Int // converted, in the group base currency
+  paidByMemberId      String    @db.Uuid
+  splitType           SplitType
+  occurredOn          DateTime  @db.Date
+  createdByUserId     String    @db.Uuid
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy    GroupMember    @relation(fields: [paidByMemberId], references: [id])
+  createdBy User           @relation(fields: [createdByUserId], references: [id])
+  shares    ExpenseShare[]
+
+  @@index([groupId, occurredOn(sort: Desc), createdAt(sort: Desc)])
+  // CHECK constraints (amounts and rate > 0) are created in the migration SQL.
+}
+
+model ExpenseShare {
+  id                  String @id @default(uuid()) @db.Uuid
+  expenseId           String @db.Uuid
+  memberId            String @db.Uuid
+  originalAmountMinor Int // share in the expense currency
+  amountMinor         Int // share in the base currency (enters the balance)
+  basisPoints         Int?
+
+  expense Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member  GroupMember @relation(fields: [memberId], references: [id])
+
+  @@unique([expenseId, memberId])
+  @@index([memberId])
+  // CHECK constraints (amounts >= 0) are created in the migration SQL.
+}
+
+model SettlementTransfer {
+  id           String         @id @default(uuid()) @db.Uuid
+  groupId      String         @db.Uuid
+  fromMemberId String         @db.Uuid
+  toMemberId   String         @db.Uuid
+  amountMinor  Int
+  status       TransferStatus @default(PENDING)
+  paidAt       DateTime?
+  createdAt    DateTime       @default(now())
+
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  from  GroupMember @relation("TransferFrom", fields: [fromMemberId], references: [id])
+  to    GroupMember @relation("TransferTo", fields: [toMemberId], references: [id])
+
+  @@unique([groupId, fromMemberId, toMemberId])
+  @@index([groupId])
+  // CHECK (amountMinor > 0 AND from <> to) is created in the migration SQL.
+}

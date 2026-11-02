@@ -7,6 +7,10 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
+    env: {
+      DATABASE_URL:
+        process.env['DATABASE_URL'] ?? 'postgresql://splitgo:splitgo@localhost:5432/splitgo',
+    },
     include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
   },
 });

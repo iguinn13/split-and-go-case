@@ -8,6 +8,7 @@ async function bootstrap(): Promise<void> {
   const env = loadEnv(process.env);
   const app = await NestFactory.create(AppModule);
   app.enableCors({ origin: env.CORS_ORIGIN, credentials: true });
+  app.enableShutdownHooks();
   await app.listen(env.PORT);
 }
 
