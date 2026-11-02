@@ -4,8 +4,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
-import { expensesHref, formatDate } from '@/lib/expenses/format';
-import { displayRate } from '@/lib/expenses/money-input';
+import { conversionLine, expensesHref, formatDate } from '@/lib/expenses/format';
 import type { Expense, Page } from '@/lib/expenses/types';
 import type { Group } from '@/lib/groups/types';
 import { formatMoney } from '@/lib/money/format-money';
@@ -107,9 +106,15 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
                 </div>
                 {foreign ? (
                   <p className="text-sm text-muted">
-                    {formatMoney(expense.originalAmountMinor, expense.currency)} · taxa{' '}
-                    {displayRate(expense.exchangeRate)} ·{' '}
-                    {formatMoney(expense.amountMinor, group.baseCurrency)}
+                    {conversionLine(
+                      {
+                        currency: expense.currency,
+                        amountMinor: expense.originalAmountMinor,
+                        exchangeRate: expense.exchangeRate,
+                      },
+                      expense.amountMinor,
+                      group.baseCurrency,
+                    )}
                   </p>
                 ) : null}
                 {canModify ? (

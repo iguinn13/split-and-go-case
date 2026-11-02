@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { BalancesPanel } from '@/components/balances/balances-panel';
 import { ExpensesPanel } from '@/components/expenses/expenses-panel';
 import { MembersPanel } from '@/components/groups/members-panel';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -114,6 +115,8 @@ export default async function GroupPage({
         />
       ) : tab === 'expenses' ? (
         <ExpensesPanel group={group} userId={me.id} page={page} />
+      ) : tab === 'balances' ? (
+        <BalancesPanel groupId={group.id} />
       ) : (
         <EmptyState
           title={`${TABS.find((t) => t.id === tab)?.label ?? ''}: em breve`}
