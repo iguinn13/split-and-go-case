@@ -3,7 +3,7 @@ export type MutationResult<T> = { ok: true; data: T } | { ok: false; message: st
 
 export async function mutate<T>(
   input: string,
-  init: { method: 'POST' | 'DELETE'; body?: unknown },
+  init: { method: 'POST' | 'PUT' | 'DELETE'; body?: unknown },
 ): Promise<MutationResult<T>> {
   try {
     const response = await fetch(input, {

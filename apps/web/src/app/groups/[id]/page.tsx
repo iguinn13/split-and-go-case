@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ExpensesPanel } from '@/components/expenses/expenses-panel';
 import { MembersPanel } from '@/components/groups/members-panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
+import { pageQuerySchema } from '@/lib/expenses/schemas';
 import type { CurrentUser, Group } from '@/lib/groups/types';
 
 const TABS = [
@@ -26,10 +28,12 @@ export default async function GroupPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{ tab?: string | string[]; page?: string | string[] }>;
 }) {
   const { id } = await params;
-  const tab = parseTab((await searchParams).tab);
+  const query = await searchParams;
+  const tab = parseTab(query.tab);
+  const page = pageQuerySchema.parse({ page: query.page }).page;
 
   let group: Group;
   let me: CurrentUser;
@@ -108,6 +112,8 @@ export default async function GroupPage({
           isOwner={group.ownerId === me.id}
           closed={closed}
         />
+      ) : tab === 'expenses' ? (
+        <ExpensesPanel group={group} userId={me.id} page={page} />
       ) : (
         <EmptyState
           title={`${TABS.find((t) => t.id === tab)?.label ?? ''}: em breve`}

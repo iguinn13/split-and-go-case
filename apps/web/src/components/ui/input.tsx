@@ -3,9 +3,11 @@ import type { InputHTMLAttributes } from 'react';
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
+  /** Extra description ids, merged with the error id. */
+  describedBy?: string;
 }
 
-export function Input({ label, error, id, className = '', ...props }: InputProps) {
+export function Input({ label, error, id, className = '', describedBy, ...props }: InputProps) {
   const inputId = id ?? props.name ?? label;
   const errorId = `${inputId}-error`;
   return (
@@ -16,7 +18,9 @@ export function Input({ label, error, id, className = '', ...props }: InputProps
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={
+          [describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+        }
         className={`min-h-11 rounded-lg border bg-surface px-3 py-2 ${error ? 'border-danger-700' : 'border-line'} ${className}`}
         {...props}
       />
