@@ -54,6 +54,14 @@ export class ExpensesRepository {
     return { items, total };
   }
 
+  listAllChronological(groupId: string): Promise<ExpenseWithShares[]> {
+    return this.prisma.expense.findMany({
+      where: { groupId },
+      include: withShares,
+      orderBy: [{ occurredOn: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   create(groupId: string, createdByUserId: string, data: ExpenseData): Promise<ExpenseWithShares> {
     return this.prisma.$transaction(async (tx) => {
       await this.lockOpenGroup(tx, groupId);
