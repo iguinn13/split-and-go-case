@@ -33,7 +33,7 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 | RN-GRP-05 | Se o e-mail de um participante bate com o de um usuário cadastrado, o participante é vinculado a esse usuário. Se o usuário se cadastrar depois, o vínculo é feito no cadastro. |
 | RN-GRP-06 | Só o dono adiciona/remove participantes e edita o grupo. Qualquer participante vinculado pode ler o grupo e lançar despesas. |
 | RN-GRP-07 | Não é possível remover um participante que seja pagador ou participante de alguma despesa (`409 MEMBER_HAS_EXPENSES`). |
-| RN-GRP-08 | O dono não pode ser removido do grupo. |
+| RN-GRP-08 | O dono não pode ser removido do grupo; a tentativa retorna `403 FORBIDDEN` (decisão: não há código de erro específico). |
 | RN-GRP-09 | Grupo `CLOSED` não aceita mudanças de participantes (`409 GROUP_CLOSED`). |
 | RN-GRP-10 | Usuário sem vínculo com o grupo recebe `404` (não revelar existência). |
 
@@ -76,6 +76,11 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 - **Dado** que sou participante, mas não dono
 - **Quando** tento adicionar ou remover participantes ou editar o grupo
 - **Então** recebo `403 FORBIDDEN`.
+
+### AC-GRP-08b — Dono não removível
+- **Dado** que sou o dono do grupo
+- **Quando** tento remover o participante vinculado a mim (o próprio dono)
+- **Então** recebo `403 FORBIDDEN` e nada muda.
 
 ### AC-GRP-09 — Grupo fechado
 - **Dado** um grupo `CLOSED`
