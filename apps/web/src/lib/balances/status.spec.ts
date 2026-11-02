@@ -20,7 +20,7 @@ describe('balanceStatus', () => {
   it('maps zero to ✓ / quitado / muted', () => {
     const s = balanceStatus(0);
     expect([s.kind, s.icon, s.label]).toEqual(['settled', '✓', 'quitado']);
-    expect(s.textClass).toBe('text-muted');
+    expect(s.textClass).toBe('text-muted-foreground');
     expect(s.borderClass).toBe('border-l-line');
   });
 });

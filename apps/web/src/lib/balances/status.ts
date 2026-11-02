@@ -35,7 +35,7 @@ export function balanceStatus(netMinor: number): BalanceStatus {
     kind: 'settled',
     label: 'quitado',
     icon: '✓',
-    textClass: 'text-muted',
+    textClass: 'text-muted-foreground',
     borderClass: 'border-l-line',
   };
 }

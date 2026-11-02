@@ -77,7 +77,7 @@ describe('transferStatusView', () => {
     expect(transferStatusView('PENDING')).toEqual({
       label: 'Pendente',
       icon: '◷',
-      className: 'text-muted',
+      className: 'text-muted-foreground',
     });
   });
 });
