@@ -40,7 +40,7 @@ export function NavTabs({
                 className={cn(
                   'flex min-h-14 flex-col items-center justify-center gap-0.5 border-b-2 px-0.5 py-1.5 text-[0.6875rem] font-semibold focus-visible:-outline-offset-2 sm:flex-row sm:gap-2 sm:text-sm [&_svg]:size-5 sm:[&_svg]:size-4',
                   active
-                    ? 'border-primary text-link'
+                    ? 'border-primary text-link forced-colors:underline'
                     : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >

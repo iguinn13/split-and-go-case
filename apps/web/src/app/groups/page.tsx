@@ -59,7 +59,9 @@ export default async function GroupsPage() {
                   <h2 className="break-words text-lg font-semibold">{group.name}</h2>
                   <span
                     className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                      group.status === 'OPEN' ? 'bg-brand-50 text-brand-700' : 'bg-line text-ink'
+                      group.status === 'OPEN'
+                        ? 'bg-brand-50 text-brand-700'
+                        : 'bg-muted text-foreground'
                     }`}
                   >
                     {group.status === 'OPEN' ? 'Aberto' : 'Fechado'}

@@ -8,7 +8,7 @@ export async function Header() {
   const signedIn = Boolean(await getSessionToken());
   return (
     <header className="border-b border-border bg-card pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-page py-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-page py-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
         <Link
           href={signedIn ? '/groups' : '/'}
           aria-label="Split&Go, página inicial"
@@ -17,7 +17,7 @@ export async function Header() {
           <Wordmark />
         </Link>
         {signedIn ? (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <nav aria-label="Principal">
               <Link
                 href="/groups"
@@ -28,7 +28,7 @@ export async function Header() {
             </nav>
             <form action="/api/auth/logout" method="post">
               <Button type="submit" variant="secondary" icon={<LogOut aria-hidden />}>
-                Sair
+                <span className="max-[340px]:sr-only">Sair</span>
               </Button>
             </form>
           </div>

@@ -6,6 +6,9 @@ import { Button } from './button';
 import { ErrorState } from './error-state';
 import { Input } from './input';
 import { NavTabs } from './nav-tabs';
+import { PageHeader } from './page-header';
+import { Skeleton } from './skeleton';
+import { Wordmark } from './wordmark';
 import { Select } from './select';
 
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -110,5 +113,46 @@ describe('Avatar, Badge and ErrorState', () => {
     const out = html(<ErrorState title="Falhou" message="Tente de novo" />);
     expect(out).toContain('role="alert"');
     expect(out).toContain('Erro: Falhou');
+  });
+});
+
+describe('Skeleton, PageHeader and Wordmark', () => {
+  it('announces the skeleton as a loading status', () => {
+    const out = html(<Skeleton />);
+    expect(out).toContain('role="status"');
+    expect(out).toContain('aria-label="Carregando"');
+  });
+
+  it('renders a single h1, the back link and the actions', () => {
+    const out = html(
+      <PageHeader
+        title="Viagem"
+        description="BRL"
+        backHref="/groups"
+        backLabel="Voltar aos grupos"
+        actions={<button>Editar</button>}
+      />,
+    );
+    expect(out.match(/<h1/g)).toHaveLength(1);
+    expect(out).toContain('href="/groups"');
+    expect(out).toContain('Voltar aos grupos');
+    expect(out).toContain('Editar');
+  });
+
+  it('prints the product name and hides the decorative icon', () => {
+    const out = html(<Wordmark />);
+    expect(out).toContain('Split&amp;Go');
+    expect(out).toContain('aria-hidden="true"');
+  });
+
+  it('gives the active tab a non-colour cue for forced-colors mode', () => {
+    const out = html(
+      <NavTabs label="x" items={[{ id: 'a', label: 'A', href: '/a' }]} activeId="a" />,
+    );
+    expect(out).toContain('forced-colors:underline');
+  });
+
+  it('keeps full opacity on a loading button', () => {
+    expect(html(<Button loading>Salvando</Button>)).toContain('aria-busy:disabled:opacity-100');
   });
 });
