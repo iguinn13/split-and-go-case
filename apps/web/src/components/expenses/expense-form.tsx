@@ -15,6 +15,7 @@ import {
   amountInputText,
   parseAmount,
   parseAmountInput,
+  parsePercent,
   parsePercentInput,
   sanitizeRateInput,
   toApiRate,
@@ -100,7 +101,7 @@ export function ExpenseForm({
 
   const foreign = currency !== baseCurrency;
   const units = minorUnitsOf(currency);
-  const amountParse = parseAmount(amount, units);
+  const amountParse = parseAmount(amount, units, currency);
   const originalAmountMinor = amountParse.ok ? amountParse.minor : null;
   const apiRate = foreign ? toApiRate(rate) : null;
 
@@ -167,7 +168,7 @@ export function ExpenseForm({
             type: 'FIXED',
             shares: chosen.map((m) => ({
               memberId: m.id,
-              amountMinor: parseAmountInput(values[m.id] ?? '', units),
+              amountMinor: parseAmountInput(values[m.id] ?? '', units, currency),
             })),
           };
 
@@ -287,14 +288,24 @@ export function ExpenseForm({
             value={amount}
             placeholder={units === 0 ? '0' : '0,00'}
             error={amountParse.error ?? show('amount', 'originalAmountMinor')}
+            announceError
+            describedBy="expense-amount-preview"
             onChange={(e) => setAmount(e.target.value)}
             onBlur={() => touch('amount')}
           />
-          {originalAmountMinor !== null && originalAmountMinor > 0n ? (
-            <p className="text-sm text-muted" data-testid="amount-formatted">
-              {formatMoney(originalAmountMinor, currency)}
-            </p>
-          ) : null}
+          <div id="expense-amount-preview" aria-live="polite" className="flex flex-col gap-0.5">
+            {originalAmountMinor !== null && originalAmountMinor > 0n ? (
+              <p className="text-base font-semibold" data-testid="amount-formatted">
+                {formatMoney(originalAmountMinor, currency)}
+              </p>
+            ) : null}
+            {amountParse.ok && amountParse.thousandsHint ? (
+              <p className="text-sm text-muted" data-testid="amount-hint">
+                Lido como {formatMoney(amountParse.minor, currency)} (o separador marca milhares).
+                Para centavos, digite 1,23.
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -421,9 +432,12 @@ export function ExpenseForm({
                       className="w-36"
                       value={values[member.id] ?? ''}
                       placeholder={splitType === 'PERCENTAGE' ? '0' : units === 0 ? '0' : '0,00'}
+                      announceError
                       error={
-                        parseAmount(values[member.id] ?? '', splitType === 'PERCENTAGE' ? 2 : units)
-                          .error ?? undefined
+                        (splitType === 'PERCENTAGE'
+                          ? parsePercent(values[member.id] ?? '')
+                          : parseAmount(values[member.id] ?? '', units, currency)
+                        ).error ?? undefined
                       }
                       onChange={(e) => {
                         const next = e.target.value;

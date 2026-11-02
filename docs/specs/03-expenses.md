@@ -46,12 +46,31 @@ O servidor devolve também `amountMinor` (valor convertido, na moeda-base) e, em
 
 ## Entrada do valor no formulário web
 
-O campo de valor guarda o **texto bruto** digitado ou colado e o interpreta com uma função pura dele (`parseAmount` em `apps/web/src/lib/expenses/money-input.ts`). Digitar tecla a tecla e colar o mesmo texto final dão o mesmo resultado, e nada é reformatado dentro do campo (a prévia formatada aparece abaixo dele). N = casas decimais da moeda (BRL/USD/EUR: 2; JPY/KRW: 0).
+> **Decisão humana pendente (T-51):** a spec era omissa sobre como o campo lê separadores; as regras abaixo foram escolhidas na implementação e precisam de aprovação.
 
-- Separadores iguais repetidos são milhar (`1.234.567`); com separadores diferentes, o último é o decimal (`1.234,56`, `1,234.56`). Os grupos de milhar têm 3 dígitos.
-- Um único separador seguido de 1 a N dígitos é decimal (`1,5` = 1,50); seguido de exatamente 3 dígitos (mais que N) após 1 a 3 dígitos é milhar (`1.234` = 1234, `25.000` = 25000).
-- JPY/KRW não têm decimais: todo separador é milhar; `1,5` é rejeitado.
-- Casas decimais a mais (`0,001`, `1,2345`), separadores ambíguos (`12,345,67`), sinal negativo, letras e valores com mais de 15 dígitos **não são descartados**: o campo mostra uma mensagem em pt-BR e o botão Salvar fica desabilitado. Espaços e um prefixo de moeda (`R$ `, `US$ `) são ignorados.
+O campo de valor guarda o **texto bruto** digitado ou colado e o interpreta com uma função pura dele (`parseAmount` em `apps/web/src/lib/expenses/money-input.ts`), a cada renderização e com a moeda selecionada. Digitar tecla a tecla e colar o mesmo texto final dão o mesmo resultado, e nada é reformatado dentro do campo (a prévia formatada aparece abaixo dele). N = casas decimais da moeda (BRL/USD/EUR: 2; JPY/KRW: 0). Os campos de valor fixo por participante usam o mesmo interpretador, na moeda da despesa.
+
+**Moedas com casas decimais (N > 0)**
+
+- Separadores iguais repetidos são milhar (`1.234.567`). Com separadores diferentes, o último é o decimal e os anteriores devem ser iguais entre si e de milhar (`1.234,56`, `1,234.56`).
+- Grupos de milhar: o primeiro com 1 a 3 dígitos **sem começar com 0**, os demais com exatamente 3 dígitos.
+- Um único separador seguido de 1 a N dígitos é decimal (`1,5` = 1,50; `,5`; `5,`). Seguido de exatamente 3 dígitos (mais que N), com 1 a 3 dígitos antes que não comecem com 0, é milhar (`1.234` = 1234, `25.000` = 25000); nesse caso o campo mostra a dica "Lido como R$ 1.234,00".
+- Rejeitados com mensagem: casas a mais (`0,001`, `1,2345`, `1234,567`), separadores ambíguos (`12,345,67`, `1.2.3`, `0.000.500`).
+
+**Moedas sem casas decimais (JPY/KRW)**
+
+- Todo separador é milhar e devem ser todos iguais; o primeiro grupo tem 1 a 3 dígitos sem começar com 0 (`1.234`, `1,234`, `25.000` valem 1234 e 25000).
+- Rejeitados: `1,5`, `0,001`, `0.500`, separador no fim, e separadores mistos (`1,234.567`).
+
+**Espaços, símbolo, sinal e tamanho (todas as moedas)**
+
+- Espaços só nas pontas são ignorados. No meio do número, espaço (comum, NBSP ou fino) só vale como milhar entre um grupo inicial de 1 a 3 dígitos e grupos de exatamente 3 (`1 234,56`, `10 000`, `1 234 567`). `12 50`, `1 2`, `1 5`, tabulações e quebras de linha são rejeitados, nunca apagados.
+- Só o marcador da moeda selecionada pode preceder o número: o símbolo exatamente como o app o exibe (`R$`, `US$`, `JP¥`, `€`...) ou o código (`BRL`, sem diferenciar maiúsculas). Marcador de outra moeda (`US$ 10` em BRL), `r$` ou prefixos inventados são rejeitados com mensagem.
+- Sinal negativo, letras, caracteres invisíveis e mais de 15 dígitos são rejeitados.
+
+**Porcentagens** usam outro interpretador (`parsePercent`): dígitos com uma vírgula ou ponto e no máximo 2 casas, com `%` opcional no fim (como o app exibe); não há milhar, então `1.000` e `33,333` são rejeitados com mensagem de porcentagem.
+
+Em todo caso rejeitado, o campo mostra a mensagem em pt-BR (`role="alert"`, ligada por `aria-describedby`), a prévia some e o botão Salvar fica desabilitado; nenhum dígito é descartado ou fundido.
 
 ## Regras de negócio
 

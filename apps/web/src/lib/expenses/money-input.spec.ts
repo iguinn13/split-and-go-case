@@ -9,7 +9,7 @@ import {
   amountInputText,
   minorUnitsOf,
   parseAmount,
-  parseAmountInput,
+  parsePercent,
   parsePercentInput,
   type AmountParse,
   sanitizeRateInput,
@@ -17,50 +17,73 @@ import {
 } from './money-input';
 
 /** Types the text one character at a time, as the field does, and returns every state. */
-function typeKeyByKey(text: string, units: number): AmountParse[] {
+function typeKeyByKey(text: string, currency: string): AmountParse[] {
   // The field keeps the raw text, so each keystroke just appends to it.
-  return [...text].map((_, i) => parseAmount(text.slice(0, i + 1), units));
+  return [...text].map((_, i) => read(text.slice(0, i + 1), currency));
 }
 
-const minorOf = (text: string, units: number) => parseAmountInput(text, units);
-const errorOf = (text: string, units: number) => parseAmount(text, units).error;
+const read = (text: string, currency: string) =>
+  parseAmount(text, minorUnitsOf(currency), currency);
+const minorOf = (text: string, currency: string) => {
+  const result = read(text, currency);
+  return result.ok ? result.minor : null;
+};
+const errorOf = (text: string, currency: string) => read(text, currency).error;
 
-/** Independent reference parser (regex based), only for differential checks. */
-function referenceParse(text: string, units: number): bigint | null {
-  const t = text.replace(/\s/g, '');
-  const grouped = (s: string, sep: string) => new RegExp(`^\\d{1,3}(\\${sep}\\d{3})*$`).test(s);
-  let m: RegExpMatchArray | null;
+const SPACES = '[ \\u00a0\\u202f\\u2009]';
+
+/**
+ * Independent reference parser (regex based, own marker table), only for differential checks.
+ * Written from the rules, not from the implementation.
+ */
+function referenceParse(text: string, currency: 'BRL' | 'JPY'): bigint | null {
+  const units = currency === 'BRL' ? 2 : 0;
+  let t = text.trim();
+  const marker = currency === 'BRL' ? /^(R\$|[Bb][Rr][Ll])/ : /^(JP¥|[Jj][Pp][Yy])/;
+  const anyMarker = /^[^\d.,\s-]+/;
+  const lead = anyMarker.exec(t)?.[0];
+  if (lead !== undefined) {
+    const own = marker.exec(lead);
+    if (!own || own[0] !== lead) return null;
+    t = t.slice(lead.length).trim();
+  }
+  if (/[^\d.,\s]/.test(t)) return null;
+  if (new RegExp(SPACES).test(t) || /\s/.test(t)) {
+    const m = t.match(new RegExp(`^([1-9]\\d{0,2}(?:${SPACES}\\d{3})+)([.,]\\d*)?$`));
+    if (!m) return null;
+    t = (m[1] as string).replace(/\s/g, '') + (m[2] ?? '');
+  }
+  if (t === '') return null;
   if (/^\d+$/.test(t)) return BigInt(t + '0'.repeat(units));
   if (units === 0) {
-    return /^\d{1,3}([.,]\d{3})+$/.test(t) ? BigInt(t.replace(/[.,]/g, '')) : null;
+    return /^[1-9]\d{0,2}(?:\.\d{3})+$/.test(t) || /^[1-9]\d{0,2}(?:,\d{3})+$/.test(t)
+      ? BigInt(t.replace(/[.,]/g, ''))
+      : null;
   }
-  // 1.234,56 / 1,234.56 / 1.234.567,89 (thousands + one decimal separator of the other kind)
+  // thousands + one decimal separator of the other kind: 1.234,56 / 1,234.56
   for (const [th, dec] of [
     ['.', ','],
     [',', '.'],
   ] as const) {
-    m = t.match(new RegExp(`^(\\d+(?:\\${th}\\d{3})*)\\${dec}(\\d*)$`));
-    if (
-      m &&
-      (m[1] as string).includes(th) &&
-      grouped(m[1] as string, th) &&
-      (m[2] as string).length <= units
-    ) {
-      return BigInt((m[1] as string).split(th).join('') + (m[2] as string).padEnd(units, '0'));
+    const m = t.match(new RegExp(`^(\\d+(?:\\${th}\\d{3})*)\\${dec}(\\d*)$`));
+    if (m && (m[1] as string).includes(th)) {
+      const head = m[1] as string;
+      const frac = m[2] as string;
+      if (!new RegExp(`^[1-9]\\d{0,2}(\\${th}\\d{3})+$`).test(head)) return null;
+      return frac.length <= units
+        ? BigInt(head.split(th).join('') + frac.padEnd(units, '0'))
+        : null;
     }
   }
-  // single separator
-  m = t.match(/^(\d*)[.,](\d*)$/);
-  if (m) {
-    const [, int = '', frac = ''] = m;
+  const single = t.match(/^(\d*)[.,](\d*)$/);
+  if (single) {
+    const [, int = '', frac = ''] = single;
     if (frac.length <= units) return BigInt((int || '0') + frac.padEnd(units, '0'));
-    if (frac.length === 3 && /^[1-9]\d{0,2}$/.test(int))
-      return BigInt(int + frac + '0'.repeat(units));
+    if (frac.length === 3 && /^[1-9]\d{0,2}$/.test(int)) return BigInt(int + frac + '00');
     return null;
   }
-  // equal separators = thousands
-  m = t.match(/^\d{1,3}(?:([.,])\d{3})+$/);
-  if (m && new Set(t.match(/[.,]/g)).size === 1) {
+  // several equal separators = thousands
+  if (/^[1-9]\d{0,2}(?:\.\d{3})+$/.test(t) || /^[1-9]\d{0,2}(?:,\d{3})+$/.test(t)) {
     return BigInt(t.replace(/[.,]/g, '') + '0'.repeat(units));
   }
   return null;
@@ -88,25 +111,30 @@ describe('amount input: exact cases (paste and typing)', () => {
     ['00,50', 50n],
     ['0', 0n],
     ['100', 10000n],
-    ['  1 234,56 ', 123456n],
+    ['  1.234,56 ', 123456n],
+    ['1 234,56', 123456n],
+    ['1 234,56', 123456n],
+    ['1 234,56', 123456n],
+    ['1 234,56', 123456n],
+    ['10 000', 1000000n],
+    ['1 234 567', 123456700n],
     ['R$ 1.234,56', 123456n],
     ['R$ 1.234,56', 123456n],
-    ['US$ 10,01', 1001n],
+    ['R$1.234,56', 123456n],
     ['BRL 5', 500n],
+    ['brl 5', 500n],
     ['900719925474,99', 90071992547499n],
   ];
-  it.each(brl)('pastes %s in a 2-decimal currency', (text, expected) => {
-    expect(minorOf(text, 2)).toBe(expected);
+  it.each(brl)('pastes %s in BRL', (text, expected) => {
+    expect(minorOf(text, 'BRL')).toBe(expected);
   });
 
   it.each(brl)('typing %s key by key ends at the same value as pasting it', (text, expected) => {
-    const states = typeKeyByKey(text, 2);
-    const last = states[states.length - 1];
-    expect(last).toEqual({ ok: true, minor: expected, error: null });
+    expect(typeKeyByKey(text, 'BRL').at(-1)).toMatchObject({ ok: true, minor: expected });
   });
 
   it('typing 1.234,56 key by key never reads a thousands mark as decimal', () => {
-    const states = typeKeyByKey('1.234,56', 2).map((s) => (s.ok ? s.minor : s.error));
+    const states = typeKeyByKey('1.234,56', 'BRL').map((s) => (s.ok ? s.minor : s.error));
     expect(states).toEqual([
       100n, // 1
       100n, // 1.   (trailing decimal mark)
@@ -120,17 +148,29 @@ describe('amount input: exact cases (paste and typing)', () => {
   });
 
   it('typing 1,234.56 key by key ends at R$ 1.234,56', () => {
-    const states = typeKeyByKey('1,234.56', 2);
+    const states = typeKeyByKey('1,234.56', 'BRL');
     expect(states.at(-1)).toMatchObject({ ok: true, minor: 123456n });
     expect(states.at(-4)).toMatchObject({ ok: true, minor: 123400n }); // 1,234
   });
 
+  it('flags only the single-separator + 3 digits shape as the thousands hint', () => {
+    const hint = (text: string) => {
+      const r = read(text, 'BRL');
+      return r.ok && r.thousandsHint;
+    };
+    for (const text of ['1.234', '12.345', '10.000', '1,234', '999.999'])
+      expect(hint(text)).toBe(true);
+    for (const text of ['1.23', '1,5', '1.234,56', '1.234.567', '1234', '1.2']) {
+      expect(hint(text)).toBe(false);
+    }
+    expect(minorOf('12.345', 'BRL')).toBe(1234500n);
+  });
+
   it('does not reinterpret already formatted text', () => {
-    // Re-reading the canonical text of any parsed value gives the same value.
     for (const text of ['1.234', '1.234,56', '25.000', '1,5', '0,01']) {
-      const minor = minorOf(text, 2) as bigint;
-      expect(minorOf(amountInputText(minor, 2), 2)).toBe(minor);
-      expect(minorOf(amountInputText(minor, 2).replace(',', '.'), 2)).toBe(minor);
+      const minor = minorOf(text, 'BRL') as bigint;
+      expect(minorOf(amountInputText(minor, 2), 'BRL')).toBe(minor);
+      expect(minorOf(amountInputText(minor, 2).replace(',', '.'), 'BRL')).toBe(minor);
     }
   });
 
@@ -144,39 +184,68 @@ describe('amount input: exact cases (paste and typing)', () => {
     ['12,345,67', 'ambíguo'],
     ['1.2.3', 'ambíguo'],
     ['1,2,3', 'ambíguo'],
+    ['0.000.500', 'ambíguo'],
     ['1.234,56,7', 'ambíguo'],
     ['1.234,567,89', 'ambíguo'],
     ['1,234.567.89', 'ambíguo'],
-    ['1,234.56.7', 'ambíguo'],
     ['.,5', 'ambíguo'],
     ['-5', 'negativo'],
     ['-1.234,56', 'negativo'],
+    ['R$ -5', 'negativo'],
     ['abc', 'apenas números'],
     ['abc1x2', 'apenas números'],
     ['1e3', 'apenas números'],
     ['1+2', 'apenas números'],
+    ['1​234', 'apenas números'],
     ['1234567890123456', 'grande demais'],
     ['9'.repeat(5000), 'grande demais'],
+    // whitespace inside the number is never deleted
+    ['12 50', 'Espaço no meio'],
+    ['1 2', 'Espaço no meio'],
+    ['1 5', 'Espaço no meio'],
+    ['1  234', 'Espaço no meio'],
+    ['1 23', 'Espaço no meio'],
+    ['1 2345', 'Espaço no meio'],
+    ['0 123', 'Espaço no meio'],
+    ['1 234 56', 'Espaço no meio'],
+    ['1\t234', 'Espaço no meio'],
+    ['1\n234', 'Espaço no meio'],
+    ['1 234,5 6', 'Espaço no meio'],
+    ['1 234.567,89', 'Espaço no meio'],
+    // only BRL's own marker is accepted
+    ['US$ 10', 'Este campo é em BRL'],
+    ['€ 100', 'Este campo é em BRL'],
+    ['r$ 10', 'Este campo é em BRL'],
+    ['xyz$ 10', 'Este campo é em BRL'],
+    ['$ 10', 'Este campo é em BRL'],
+    ['USD 10', 'Este campo é em BRL'],
+    ['JP¥ 10', 'Este campo é em BRL'],
   ];
-  it.each(rejected)(
-    'rejects %s with a visible message instead of dropping digits',
-    (text, part) => {
-      const result = parseAmount(text.length > 40 ? text : text, 2);
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain(part);
-      expect(minorOf(text, 2)).toBeNull();
-    },
-  );
+  it.each(rejected)('rejects %j with a visible message instead of altering it', (text, part) => {
+    const result = read(text, 'BRL');
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain(part);
+    expect(minorOf(text, 'BRL')).toBeNull();
+  });
 
-  it('treats empty, blank and lone separators as nothing typed yet or invalid', () => {
-    expect(parseAmount('', 2)).toEqual({ ok: false, error: null });
-    expect(parseAmount('   ', 2)).toEqual({ ok: false, error: null });
-    expect(parseAmount('R$', 2)).toEqual({ ok: false, error: null });
-    expect(minorOf(',', 2)).toBe(0n);
+  it('treats empty, blank and marker-only text as nothing typed yet', () => {
+    expect(read('', 'BRL')).toEqual({ ok: false, error: null });
+    expect(read('   ', 'BRL')).toEqual({ ok: false, error: null });
+    expect(read('R$', 'BRL')).toEqual({ ok: false, error: null });
+    expect(read('R$ ', 'BRL')).toEqual({ ok: false, error: null });
+    expect(minorOf(',', 'BRL')).toBe(0n);
+  });
+
+  it('accepts only the selected currency marker, per currency', () => {
+    expect(minorOf('US$ 10', 'USD')).toBe(1000n);
+    expect(minorOf('usd 10', 'USD')).toBe(1000n);
+    expect(minorOf('€ 1.234,56', 'EUR')).toBe(123456n);
+    expect(errorOf('R$ 10', 'USD')).toContain('Este campo é em USD');
+    expect(errorOf('US$ 10', 'EUR')).toContain('Este campo é em EUR');
   });
 
   it('keeps integer arithmetic exact for very long valid input', () => {
-    expect(minorOf('9'.repeat(13), 2)).toBe(BigInt('9'.repeat(13) + '00'));
+    expect(minorOf('9'.repeat(13), 'BRL')).toBe(BigInt('9'.repeat(13) + '00'));
   });
 });
 
@@ -186,35 +255,65 @@ describe('amount input: currencies without decimals (JPY/KRW)', () => {
     ['1,234', 1234n],
     ['25.000', 25000n],
     ['1.234.567', 1234567n],
-    ['1,234.567', 1234567n],
+    ['1,234,567', 1234567n],
     ['5000', 5000n],
     ['5.000', 5000n],
     ['007', 7n],
+    ['1 234', 1234n],
+    ['10 000', 10000n],
     ['JP¥ 5.000', 5000n],
-    ['₩ 1.500', 1500n],
-  ])('reads %s as %s', (text, expected) => {
-    expect(minorOf(text, 0)).toBe(expected);
-    expect(typeKeyByKey(text, 0).at(-1)).toMatchObject({ ok: true, minor: expected });
+    ['jpy 5.000', 5000n],
+  ])('reads %s in JPY as %s', (text, expected) => {
+    expect(minorOf(text, 'JPY')).toBe(expected);
+    expect(typeKeyByKey(text, 'JPY').at(-1)).toMatchObject({ ok: true, minor: expected });
   });
 
-  it.each(['1,5', '1.5', '1.23', '12,34', '1.2345', '5,', ',5', '1.2.3', '1.234,5', '-1'])(
-    'rejects %s (no decimals) instead of turning it into another amount',
+  it('reads the KRW marker and rejects the JPY one', () => {
+    expect(minorOf('₩ 1.500', 'KRW')).toBe(1500n);
+    expect(minorOf('1.234', 'KRW')).toBe(1234n);
+    expect(errorOf('₩ 1.500', 'JPY')).toContain('Este campo é em JPY');
+    expect(errorOf('JP¥ 1.500', 'KRW')).toContain('Este campo é em KRW');
+  });
+
+  it.each([
+    '1,5',
+    '1.5',
+    '1.23',
+    '12,34',
+    '1.2345',
+    '5,',
+    ',5',
+    '1.2.3',
+    '1.234,5',
+    '-1',
+    '0,001',
+    '0.500',
+    '0.000',
+    '1,234.567',
+    '1.234,567',
+    '1.234,5678',
+    '12 50',
+    '1 2',
+    '1 234,5',
+  ])(
+    'rejects %s (no decimals, no mixed separators) instead of turning it into another amount',
     (text) => {
-      expect(minorOf(text, 0)).toBeNull();
-      expect(errorOf(text, 0)).toEqual(expect.any(String));
+      expect(minorOf(text, 'JPY')).toBeNull();
+      expect(errorOf(text, 'JPY')).toEqual(expect.any(String));
     },
   );
   it('explains the no-decimals rule', () => {
-    expect(errorOf('1,5', 0)).toContain('não tem casas decimais');
+    expect(errorOf('1,5', 'JPY')).toContain('não tem casas decimais');
+    expect(errorOf('1,234.567', 'JPY')).toContain('não tem casas decimais');
   });
 });
 
 describe('amount input: 3-decimal currencies', () => {
   it('reads a separator followed by up to 3 digits as decimal', () => {
-    expect(minorOf('1,234', 3)).toBe(1234n);
-    expect(minorOf('1.234,567', 3)).toBe(1234567n);
-    expect(minorOf('1,5', 3)).toBe(1500n);
-    expect(errorOf('1,2345', 3)).toContain('no máximo 3 casas');
+    expect(parseAmount('1,234', 3, 'KWD')).toMatchObject({ ok: true, minor: 1234n });
+    expect(parseAmount('1.234,567', 3, 'KWD')).toMatchObject({ ok: true, minor: 1234567n });
+    expect(parseAmount('1,5', 3)).toMatchObject({ ok: true, minor: 1500n });
+    expect(parseAmount('1,2345', 3).error).toContain('no máximo 3 casas');
   });
 });
 
@@ -226,28 +325,46 @@ describe('amount input: typing equals pasting, differential and generated checks
     return seed % max;
   };
 
-  const alphabet = ['0', '1', '2', '5', '9', '.', ',', ' ', 'a', '-'];
+  const alphabet = ['0', '1', '2', '5', '9', '.', ',', ' ', ' ', ' ', 'a', '-', '\t'];
+  const prefixes = [
+    '',
+    '',
+    '',
+    'R$',
+    'R$ ',
+    'r$ ',
+    'US$ ',
+    'BRL',
+    'brl ',
+    '$',
+    '€ ',
+    'JP¥ ',
+    'jpy ',
+    'JPY',
+    'xyz$',
+  ];
   const randomText = () =>
+    prefixes[next(prefixes.length)] +
     Array.from({ length: 1 + next(10) }, () => alphabet[next(alphabet.length)]).join('');
 
-  it('agrees with the reference parser on 20000 generated texts', () => {
-    for (let i = 0; i < 20000; i++) {
+  it('agrees with the reference parser on 60000 generated texts per currency', () => {
+    let accepted = 0;
+    for (let i = 0; i < 60000; i++) {
       const text = randomText();
-      for (const units of [0, 2]) {
-        const expected = /[a-z-]/.test(text) ? null : referenceParse(text, units);
-        // Blank/only-whitespace text is "nothing typed" in both.
-        if (text.trim() === '') continue;
-        expect(minorOf(text, units), `${JSON.stringify(text)} units=${units}`).toBe(expected);
+      for (const currency of ['BRL', 'JPY'] as const) {
+        const expected = referenceParse(text, currency);
+        if (expected !== null) accepted++;
+        expect(minorOf(text, currency), `${JSON.stringify(text)} ${currency}`).toBe(expected);
       }
     }
+    expect(accepted).toBeGreaterThan(3000); // the generator does reach the valid shapes
   });
 
   it('is a pure function: the typed state equals a fresh paste of the same prefix', () => {
     for (let i = 0; i < 2000; i++) {
       const text = randomText();
-      const typed = typeKeyByKey(text, 2);
-      typed.forEach((state, index) => {
-        expect(state).toEqual(parseAmount(text.slice(0, index + 1), 2));
+      typeKeyByKey(text, 'BRL').forEach((state, index) => {
+        expect(state).toEqual(read(text.slice(0, index + 1), 'BRL'));
       });
     }
   });
@@ -255,7 +372,7 @@ describe('amount input: typing equals pasting, differential and generated checks
   it('never invents or drops digits: a valid result keeps every digit typed', () => {
     for (let i = 0; i < 5000; i++) {
       const text = randomText();
-      const result = parseAmount(text, 2);
+      const result = read(text, 'BRL');
       if (!result.ok) continue;
       const typedDigits = text.replace(/\D/g, '').replace(/^0+/, '');
       const minorDigits = result.minor.toString().replace(/^0+/, '');
@@ -279,15 +396,74 @@ describe('amount input: typing equals pasting, differential and generated checks
           plain,
           amountInputText(minor, units),
           units > 0 ? plain.replace(/\./g, '_').replace(',', '.').replace(/_/g, ',') : plain,
+          plain.replace(/\./g, ' '),
         ];
         for (const variant of variants) {
-          expect(minorOf(variant, units), `${currency} ${variant}`).toBe(minor);
-          expect(typeKeyByKey(variant, units).at(-1), `${currency} ${variant}`).toMatchObject({
+          expect(minorOf(variant, currency), `${currency} ${variant}`).toBe(minor);
+          expect(typeKeyByKey(variant, currency).at(-1), `${currency} ${variant}`).toMatchObject({
             ok: true,
             minor,
           });
         }
       }
+    }
+  });
+});
+
+describe('percentage input', () => {
+  it.each([
+    ['33,33', 3333n],
+    ['33.33', 3333n],
+    ['50', 5000n],
+    ['0,05', 5n],
+    ['100', 10000n],
+    ['50%', 5000n],
+    ['33,33 %', 3333n],
+    [',5', 50n],
+    ['5,', 500n],
+  ])('reads %s as %s basis points', (text, expected) => {
+    expect(parsePercentInput(text)).toBe(expected);
+  });
+
+  it.each([
+    ['1.000', 'no máximo 2 casas'],
+    ['33,333', 'no máximo 2 casas'],
+    ['0,005', 'no máximo 2 casas'],
+    ['1,2,3', 'uma só vírgula'],
+    ['1.000,5', 'uma só vírgula'],
+    ['-5', 'negativa'],
+    ['abc', 'apenas números'],
+    ['5%%', 'apenas números'],
+    ['%5', 'apenas números'],
+    ['1 000', 'apenas números'],
+    ['R$ 5', 'apenas números'],
+  ])('rejects %s with a percentage message', (text, part) => {
+    expect(parsePercentInput(text)).toBeNull();
+    const error = parsePercent(text).error;
+    expect(error).toContain(part);
+    expect(error).not.toContain('moeda');
+  });
+
+  it('treats empty text as nothing typed', () => {
+    expect(parsePercent('')).toEqual({ ok: false, error: null });
+    expect(parsePercent(' % ')).toEqual({ ok: false, error: null });
+  });
+
+  it('agrees with an independent reference on generated texts', () => {
+    let seed = 42;
+    const next = (max: number) => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      return seed % max;
+    };
+    const alphabet = ['0', '3', '5', '.', ',', ' ', '%', '-', 'a'];
+    for (let i = 0; i < 20000; i++) {
+      const text = Array.from({ length: 1 + next(8) }, () => alphabet[next(alphabet.length)]).join(
+        '',
+      );
+      const t = text.trim().replace(/\s*%$/, '');
+      const m = /^(\d*)(?:[.,](\d{0,2}))?$/.exec(t);
+      const expected = t === '' || !m ? null : BigInt((m[1] || '0') + (m[2] ?? '').padEnd(2, '0'));
+      expect(parsePercentInput(text), JSON.stringify(text)).toBe(expected);
     }
   });
 });
@@ -303,12 +479,12 @@ describe('amount input: limits', () => {
     buildExpensePayloadSchema('BRL').safeParse({ ...base, currency: 'BRL', originalAmountMinor });
 
   it('accepts exactly 1e9 minor units in the same currency and rejects 1e9 + 1', () => {
-    expect(minorOf('10.000.000,00', 2)).toBe(MAX_AMOUNT_MINOR);
+    expect(minorOf('10.000.000,00', 'BRL')).toBe(MAX_AMOUNT_MINOR);
     expect(check(1_000_000_000).success).toBe(true);
     const over = check(1_000_000_001);
     expect(over.success).toBe(false);
     expect(JSON.stringify(over.error?.issues)).toContain('no máximo 1.000.000.000');
-    expect(minorOf('10.000.000,01', 2)).toBe(MAX_AMOUNT_MINOR + 1n);
+    expect(minorOf('10.000.000,01', 'BRL')).toBe(MAX_AMOUNT_MINOR + 1n);
     expect(check(0).success).toBe(false);
     expect(check(1).success).toBe(true);
   });
