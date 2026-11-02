@@ -124,9 +124,13 @@ Requisitos: Docker e Docker Compose. Para desenvolvimento sem Docker: Node.js (L
 ### Com Docker Compose
 
 ```bash
-cp .env.example .env
+cp .env.example .env     # opcional: os padrões já funcionam em ambiente local
 docker compose up --build
 ```
+
+Sobe `postgres` (volume `postgres-data` e healthcheck), `api` e `web`. A API só inicia depois que o banco está saudável e executa `prisma migrate deploy` antes de subir. Para parar: `docker compose down` (adicione `-v` para apagar os dados). Se alguma porta estiver ocupada, defina `POSTGRES_PORT`, `API_PORT` ou `WEB_PORT` no `.env`.
+
+Variáveis (documentadas em `.env.example`): `JWT_SECRET`, `CORS_ORIGIN`, `FX_PROVIDER_URL` e credenciais do Postgres. `DATABASE_URL` e `API_URL` são definidas pelo `docker-compose.yml`.
 
 | Serviço | URL |
 |---|---|
@@ -143,8 +147,10 @@ pnpm install
 cp apps/api/.env.example apps/api/.env      # ajuste DATABASE_URL e JWT_SECRET
 cp apps/web/.env.example apps/web/.env
 docker compose up -d postgres               # apenas o banco
-pnpm --filter api prisma migrate dev        # migrations + seed
-pnpm dev                                    # api :3001 e web :3000
+pnpm --filter @split-and-go/api prisma migrate deploy   # aplica as migrations
+pnpm --filter @split-and-go/api db:seed                 # dados de demonstração (opcional)
+pnpm --filter @split-and-go/api start:dev               # API em :3001 (terminal 1)
+pnpm --filter @split-and-go/web dev                     # web em :3000 (terminal 2)
 ```
 
 ### Qualidade
