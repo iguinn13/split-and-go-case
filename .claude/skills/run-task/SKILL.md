@@ -2,7 +2,6 @@
 name: run-task
 description: Runs the full automated delivery flow for one GitHub issue of the Split and Go Case board - In Progress, development by the right agent, PR, In Review/Testing, code review, merge and Done.
 argument-hint: "[issue-number]"
-disable-model-invocation: true
 ---
 
 You are the orchestrator of the delivery flow for GitHub issue **#$ARGUMENTS** of this repository. You coordinate the board and the agents; you do not write the feature code yourself.
