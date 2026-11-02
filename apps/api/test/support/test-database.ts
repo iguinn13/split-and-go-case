@@ -7,11 +7,21 @@
  *
  *  - protocol: postgres:// or postgresql://
  *  - host: localhost, 127.0.0.1, ::1, or the compose service names `postgres` / `db`
+ *  - query string: only harmless keys (schema, sslmode, connection_limit, pool_timeout,
+ *    connect_timeout). pg and Prisma honour host, hostaddr, dbname, port, service... as
+ *    overrides of the URL authority, so any other key is rejected
  *  - database name: must not look like production (prod, production, live, staging, main)
  */
 export const EXAMPLE_DATABASE_URL = 'postgresql://splitgo:splitgo@localhost:5432/splitgo_test';
 
 const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1', 'postgres', 'db']);
+const ALLOWED_QUERY_KEYS = new Set([
+  'schema',
+  'sslmode',
+  'connection_limit',
+  'pool_timeout',
+  'connect_timeout',
+]);
 const FORBIDDEN_DB_NAME = /(^|[^a-z])(prod|production|live|staging|main)([^a-z]|$)/i;
 
 export class UnsafeTestDatabaseError extends Error {
@@ -27,7 +37,7 @@ export class UnsafeTestDatabaseError extends Error {
 }
 
 /**
- * Returns the validated URL or throws UnsafeTestDatabaseError. Error messages only ever
+ * Returns the validated, normalized URL (`url.href`) or throws UnsafeTestDatabaseError. Error messages only ever
  * include the host and database name, never the raw URL, user or password.
  */
 export function resolveTestDatabaseUrl(env: Record<string, string | undefined>): string {
@@ -46,6 +56,11 @@ export function resolveTestDatabaseUrl(env: Record<string, string | undefined>):
   if (!ALLOWED_HOSTS.has(url.hostname.toLowerCase())) {
     throw new UnsafeTestDatabaseError(`host "${url.hostname}" is not a local or test host`);
   }
+  for (const key of new Set(url.searchParams.keys())) {
+    if (!ALLOWED_QUERY_KEYS.has(key)) {
+      throw new UnsafeTestDatabaseError(`query parameter "${key}" is not allowed in DATABASE_URL`);
+    }
+  }
   let dbName: string;
   try {
     dbName = decodeURIComponent(url.pathname.replace(/^\//, ''));
@@ -56,5 +71,5 @@ export function resolveTestDatabaseUrl(env: Record<string, string | undefined>):
   if (FORBIDDEN_DB_NAME.test(dbName)) {
     throw new UnsafeTestDatabaseError(`database "${dbName}" looks like a production database`);
   }
-  return raw;
+  return url.href;
 }

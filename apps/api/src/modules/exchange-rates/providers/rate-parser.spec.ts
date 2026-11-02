@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { normalizeRate, parseProviderPayload } from './rate-parser.js';
 
@@ -72,6 +73,39 @@ describe('parseProviderPayload', () => {
     for (const value of ['1e-9', '1E5', '"5.4"', '-5.4', 'null', 'true']) {
       expect(parseProviderPayload(payload(`{"BRL":${value}}`), 'BRL')).toBeNull();
     }
+  });
+});
+
+// A regression of the old unbounded scan hangs synchronously; run in a child process so the
+// hard timeout can actually kill it instead of freezing the suite.
+describe('parseProviderPayload with unterminated or odd-quote input', () => {
+  const inputs = [
+    '{"a',
+    '"',
+    '{"a\\',
+    '{"date":"2026-01-01","rates":{"BRL',
+    '<html><p class="x>captive "portal"</p> " </html>',
+    '{"date":"2026-07-10","rates":{"BRL":5.5',
+    '{"date":"2026-07-10","rates":{"BRL":5.5}}"',
+  ];
+  it('returns null for every input and finishes quickly', () => {
+    const script = `
+      import { parseProviderPayload } from ${JSON.stringify(new URL('./rate-parser.ts', import.meta.url).href)};
+      const inputs = ${JSON.stringify(inputs)};
+      console.log(JSON.stringify(inputs.map((i) => parseProviderPayload(i, 'BRL'))));
+    `;
+    const result = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', '--input-type=module', '-e', script],
+      {
+        encoding: 'utf8',
+        timeout: 5000,
+        cwd: import.meta.dirname,
+      },
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(inputs.map(() => null));
   });
 });
 

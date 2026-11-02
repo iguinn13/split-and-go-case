@@ -14,9 +14,16 @@ describe('resolveTestDatabaseUrl', () => {
     'postgres://u:p@[::1]:5432/app_test',
     'postgresql://u:p@postgres:5432/splitgo',
     'postgresql://u:p@db:5432/splitgo?schema=public',
+    'postgresql://u:p@localhost:5432/splitgo?sslmode=disable&connection_limit=5',
     EXAMPLE_DATABASE_URL,
   ])('accepts %s', (url) => {
-    expect(resolve(url)).toBe(url);
+    expect(resolve(url)).toBe(new URL(url).href);
+  });
+
+  it('returns the normalized href, not the raw string', () => {
+    expect(resolve('postgresql://u:p w@localhost/splitgo')).toBe(
+      'postgresql://u:p%20w@localhost/splitgo',
+    );
   });
 
   it('rejects a missing or blank DATABASE_URL (there is no default)', () => {
@@ -32,6 +39,28 @@ describe('resolveTestDatabaseUrl', () => {
     'postgresql://u:p@prod-db:5432/splitgo',
   ])('rejects remote host %s', (url) => {
     expect(() => resolve(url)).toThrow(/not a local or test host/);
+  });
+
+  it.each([
+    'postgresql://u:p@localhost/db?host=prod.example.com',
+    'postgresql://u:p@localhost/db?hostaddr=10.0.0.5',
+    'postgresql://u:p@localhost/db?dbname=production',
+    'postgresql://u:p@localhost/db?service=prod',
+    'postgresql://u:p@localhost/db?port=6543',
+    'postgresql://u:p@localhost/db?schema=public&host=/var/run/postgresql',
+    'postgresql://u:p@localhost/db?HOST=prod.example.com',
+    'postgresql://u:p@localhost/db?schema=a&schema=b&user=admin',
+  ])('rejects overriding query parameter %s', (url) => {
+    expect(() => resolve(url)).toThrow(/query parameter/);
+  });
+
+  it.each([
+    'postgresql://u:p@%2Fvar%2Frun%2Fpostgresql/splitgo',
+    'postgresql://u:p@/splitgo',
+    'postgresql:///splitgo?host=/tmp',
+    'postgresql://u:p@localhost,prod.example.com/splitgo',
+  ])('rejects unix-socket, empty and multi-host values %s', (url) => {
+    expect(() => resolve(url)).toThrow(UnsafeTestDatabaseError);
   });
 
   it('rejects malformed URLs and other protocols', () => {
@@ -53,6 +82,7 @@ describe('resolveTestDatabaseUrl', () => {
       'postgresql://admin:hunter2secret@localhost:5432/production',
       'mysql://admin:hunter2secret@localhost/splitgo',
       'hunter2secret not a url',
+      'postgresql://admin:hunter2secret@localhost/splitgo?host=prod.example.com',
     ];
     for (const url of secrets) {
       const message = (() => {

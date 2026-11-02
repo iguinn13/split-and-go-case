@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { spawnSync } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FrankfurterExchangeRateProvider } from './frankfurter-exchange-rate.provider.js';
@@ -125,5 +126,42 @@ describe('FrankfurterExchangeRateProvider (local http server)', () => {
     const started = Date.now();
     await expect(provider.getRate('USD', 'BRL', null)).rejects.toThrow();
     expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('rejects unterminated or odd-quote bodies fast (child process with a hard timeout)', () => {
+    // Runs outside the worker: a regression that loops synchronously gets killed after 8 s
+    // and fails this test instead of freezing the whole suite.
+    const bodies = [
+      '{"a',
+      '"',
+      '{"a\\',
+      '{"date":"2026-01-01","rates":{"BRL',
+      '<html><p class="x>captive "portal"</p> " </html>',
+    ];
+    const providerUrl = new URL('./frankfurter-exchange-rate.provider.ts', import.meta.url).href;
+    const script = `
+      import { FrankfurterExchangeRateProvider } from ${JSON.stringify(providerUrl)};
+      const bodies = ${JSON.stringify(bodies)};
+      let i = 0;
+      globalThis.fetch = async () => new Response(bodies[i++], { status: 200 });
+      const provider = new FrankfurterExchangeRateProvider('http://127.0.0.1:1');
+      const out = [];
+      for (let n = 0; n < bodies.length; n++) {
+        out.push(await provider.getRate('USD', 'BRL', null).then(() => 'resolved', () => 'rejected'));
+      }
+      console.log(JSON.stringify(out));
+    `;
+    const result = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', '--input-type=module', '-e', script],
+      {
+        encoding: 'utf8',
+        timeout: 8000,
+        cwd: import.meta.dirname,
+      },
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(bodies.map(() => 'rejected'));
   });
 });

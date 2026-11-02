@@ -33,9 +33,10 @@ function assertNoDuplicateKeys(jsonText: string): void {
       expectKey = stack[stack.length - 1] instanceof Set;
     } else if (char === '"') {
       let end = i + 1;
-      while (jsonText[end] !== '"') end += jsonText[end] === '\\' ? 2 : 1;
+      while (end < jsonText.length && jsonText[end] !== '"') end += jsonText[end] === '\\' ? 2 : 1;
       const frame = stack[stack.length - 1];
       if (expectKey && frame instanceof Set) {
+        if (end >= jsonText.length) throw new Error('Unterminated string');
         const key = JSON.parse(jsonText.slice(i, end + 1)) as string;
         if (frame.has(key)) throw new Error('Duplicate key in provider payload');
         frame.add(key);
@@ -78,8 +79,9 @@ export function parseProviderPayload(
     return value;
   };
   try {
-    assertNoDuplicateKeys(jsonText);
+    // Parse first: the duplicate-key scan below assumes syntactically valid JSON.
     root = JSON.parse(jsonText, reviver as unknown as Parameters<typeof JSON.parse>[1]);
+    assertNoDuplicateKeys(jsonText);
   } catch {
     return null;
   }
