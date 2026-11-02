@@ -305,4 +305,26 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
       re(`Pagou ${moneyPattern(paid.get(name)!)}\\s*·\\s*Parte ${moneyPattern(owed.get(name)!)}`),
     );
   }
+
+  // --- Statements show "original · rate · converted" on every foreign-currency line (RF-UI-12) --
+  const hotel = convertSameDecimals(10000n, EDITED_RATE);
+  const hotelLine = re(
+    `${moneyPattern(10000n, 'US\\$')}\\s*·\\s*taxa ${EDITED_RATE.replace('.', ',')}\\s*·\\s*${moneyPattern(hotel)}`,
+  );
+  // Ana paid the hotel; Bruno and Carla did not, yet their lines carry the converted total too.
+  for (const name of NAMES) {
+    await page.goto(`/groups/${groupId}/members/${ids[name]}`);
+    await expect(page.getByRole('heading', { name: `Extrato de ${name}` })).toBeVisible();
+    const lines = page.getByRole('list', { name: 'Linhas do extrato' }).getByRole('listitem');
+    await expect(lines).toHaveCount(expenseRows.length);
+    await expect(lines.filter({ hasText: 'Hotel' })).toContainText(hotelLine);
+    // Base-currency lines show no conversion.
+    await expect(lines.filter({ hasText: 'Jantar' })).not.toContainText('taxa');
+  }
+
+  // --- The groups list shows the base currency straight from the list endpoint -------------------
+  await page.goto('/groups');
+  await expect(
+    page.getByRole('link', { name: /Viagem E2E/ }).getByText(/Moeda: BRL · 3 participantes/),
+  ).toBeVisible();
 });
