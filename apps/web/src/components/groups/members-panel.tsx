@@ -121,7 +121,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
           aria-busy={adding}
           className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
         >
-          <h3 className="font-semibold">Adicionar participante</h3>
+          <h2 className="font-semibold">Adicionar participante</h2>
           <Input
             id="member-name"
             label="Nome"

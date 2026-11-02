@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toast';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Split&Go', template: '%s | Split&Go' },
+  title: 'Split&Go',
   description: 'Divisão de despesas em grupo com o mínimo de transferências',
 };
 
