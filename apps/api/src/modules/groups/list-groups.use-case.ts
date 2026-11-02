@@ -11,6 +11,7 @@ export class ListGroupsUseCase {
     return groups.map((g) => ({
       id: g.id,
       name: g.name,
+      baseCurrency: g.baseCurrency,
       status: g.status,
       memberCount: g._count.members,
       createdAt: g.createdAt,

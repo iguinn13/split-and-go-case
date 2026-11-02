@@ -28,6 +28,7 @@ interface StatementBody {
   lines: {
     expenseId: string;
     original: { currency: string; amountMinor: number; exchangeRate: string } | null;
+    amountMinor: number;
     paidMinor: number;
     owedMinor: number;
     netMinor: number;
@@ -191,15 +192,67 @@ describe('Balances (e2e)', () => {
     expect(s.currency).toBe('BRL');
     expect(s.member).toEqual({ id: m['ana'], name: 'ana' });
     expect(s.lines.map((l) => l.runningBalanceMinor)).toEqual([5000, anaNet]);
-    expect(s.lines[0]).toMatchObject({ original: null, paidMinor: 10000, owedMinor: 5000 });
+    expect(s.lines[0]).toMatchObject({
+      original: null,
+      amountMinor: 10000,
+      paidMinor: 10000,
+      owedMinor: 5000,
+    });
     expect(s.lines[1]).toMatchObject({
       original: { currency: 'USD', amountMinor: 10000, exchangeRate: '5.43250000' },
+      amountMinor: 54325,
       paidMinor: 0,
       owedMinor: anaOwes,
       netMinor: -anaOwes,
     });
     expect(s.lines.at(-1)!.runningBalanceMinor).toBe(s.totals.netMinor);
     expect(s.totals.netMinor).toBe(anaNet);
+  });
+
+  it('statement lines expose the persisted converted total (payer, participant, odd cents)', async () => {
+    const { group, m } = await makeGroup(['ana', 'bia', 'caio']);
+    const all = [m['ana'], m['bia'], m['caio']];
+    // Base currency: amountMinor equals the original amount; caio is only a participant.
+    await addExpense(group.id, {
+      originalAmountMinor: 9999,
+      paidByMemberId: m['ana'],
+      occurredOn: '2026-07-01',
+      split: { type: 'EQUAL', participantIds: all },
+    });
+    // USD 33.33 at 5.4325 = 18106.5225 -> 18107 converted (odd cents over 3 participants).
+    await addExpense(group.id, {
+      originalAmountMinor: 3333,
+      currency: 'USD',
+      exchangeRate: '5.4325',
+      paidByMemberId: m['bia'],
+      occurredOn: '2026-07-02',
+      split: { type: 'EQUAL', participantIds: all },
+    });
+    // EUR 10.01 at 6.1 = 61.061 -> 6106 converted; the payer ana is not in the split.
+    await addExpense(group.id, {
+      originalAmountMinor: 1001,
+      currency: 'EUR',
+      exchangeRate: '6.1',
+      paidByMemberId: m['ana'],
+      occurredOn: '2026-07-03',
+      split: { type: 'EQUAL', participantIds: [m['bia'], m['caio']] },
+    });
+    const persisted = await prisma.expense.findMany({
+      where: { groupId: group.id },
+      orderBy: { occurredOn: 'asc' },
+      select: { id: true, amountMinor: true },
+    });
+    expect(persisted.map((p) => p.amountMinor)).toEqual([9999, 18107, 6106]);
+    for (const who of ['ana', 'bia', 'caio']) {
+      const res = await get('ana', `/groups/${group.id}/members/${m[who]}/statement`).expect(200);
+      const s = res.body as StatementBody;
+      expect(s.lines.map((l) => [l.expenseId, l.amountMinor])).toEqual(
+        persisted.map((p) => [p.id, p.amountMinor]),
+      );
+    }
+    const caio = (await get('ana', `/groups/${group.id}/members/${m['caio']}/statement`))
+      .body as StatementBody;
+    expect(caio.lines.map((l) => l.paidMinor)).toEqual([0, 0, 0]);
   });
 
   it('hides the group from strangers and reports unknown members', async () => {

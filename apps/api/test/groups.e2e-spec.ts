@@ -172,8 +172,17 @@ describe('Groups (e2e)', () => {
       expect(list.find((g) => g.id === groupA.id)).toMatchObject({
         name: 'Group A',
         status: 'OPEN',
+        baseCurrency: 'BRL',
         memberCount: 2,
       });
+      // Additive field: every summary carries its own group's base currency.
+      const usd = await createGroup('owner', { name: 'Trip USD list', baseCurrency: 'USD' });
+      const again = (await as('owner').get('/groups').expect(200)).body as {
+        id: string;
+        baseCurrency: string;
+      }[];
+      expect(again.find((g) => g.id === usd.id)?.baseCurrency).toBe('USD');
+      expect(again.find((g) => g.id === groupA.id)?.baseCurrency).toBe('BRL');
     });
 
     it('AC-GRP-04: stranger gets 404 GROUP_NOT_FOUND on every group route', async () => {

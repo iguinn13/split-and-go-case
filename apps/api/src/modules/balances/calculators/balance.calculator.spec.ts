@@ -133,6 +133,7 @@ describe('buildStatement', () => {
         description: 'x',
         occurredOn: '2026-07-01',
         original: null,
+        amountMinor: 10000,
         paidMinor: 10000,
         owedMinor: 5000,
         netMinor: 5000,
@@ -143,6 +144,7 @@ describe('buildStatement', () => {
         description: 'x',
         occurredOn: '2026-07-02',
         original: { currency: 'USD', amountMinor: 10000, exchangeRate: '5.43250000' },
+        amountMinor: 54325,
         paidMinor: 0,
         owedMinor: 27163,
         netMinor: -27163,
@@ -150,6 +152,44 @@ describe('buildStatement', () => {
       },
     ]);
     expect(s.totals).toEqual({ paidMinor: 10000, owedMinor: 32163, netMinor: -22163 });
+  });
+
+  it('amountMinor is the persisted converted total for every line type', () => {
+    // Converted total comes from the persisted value, never from the original amount or rate:
+    // 10000 * 5.4325 = 54325 exactly; 3333 * 5.4325 = 18106.5225 (rounded, persisted as 18107).
+    const odd = expense({
+      id: 'odd',
+      currency: 'USD',
+      originalAmountMinor: 3333,
+      exchangeRate: '5.43250000',
+      amountMinor: 18107,
+      paidByMemberId: 'b',
+      shares: [
+        { memberId: 'a', amountMinor: 9054 },
+        { memberId: 'b', amountMinor: 9053 },
+      ],
+    });
+    const payerOnly = expense({
+      id: 'po',
+      amountMinor: 777,
+      paidByMemberId: 'a',
+      shares: [{ memberId: 'b', amountMinor: 777 }],
+    });
+    // a: participant that did not pay (e2), payer (e1), odd cents (odd), payer not in split (po).
+    const lines = buildStatement('a', 'BRL', [e1, e2, odd, payerOnly]).lines;
+    expect(lines.map((l) => [l.expenseId, l.amountMinor])).toEqual([
+      ['e1', 10000],
+      ['e2', 54325],
+      ['odd', 18107],
+      ['po', 777],
+    ]);
+    // b sees the same converted total whether payer or participant.
+    const bLines = buildStatement('b', 'BRL', [e1, e2, odd, payerOnly]).lines;
+    expect(bLines.map((l) => [l.expenseId, l.amountMinor])).toEqual(
+      lines.map((l) => [l.expenseId, l.amountMinor]),
+    );
+    // Base-currency line: amountMinor equals the original amount.
+    expect(lines[0]).toMatchObject({ original: null, amountMinor: 10000 });
   });
 
   it('skips expenses where the member neither paid nor has a share', () => {

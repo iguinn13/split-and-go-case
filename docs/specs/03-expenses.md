@@ -88,7 +88,7 @@ Despesa em moeda estrangeira (grupo BRL):
 ### AC-EXP-01 — Rateio igualitário exato
 - **Dado** um grupo com 4 participantes
 - **Quando** lanço R$ 100,00 pago por Ana, dividido igualmente entre os 4
-- **Então** cada parte é 2500 centavos e a despesa é criada com `201` (`currency = BRL`, `exchangeRate = "1"`).
+- **Então** cada parte é 2500 centavos e a despesa é criada com `201` (`currency = BRL`, `exchangeRate = "1.00000000"`: a taxa gravada sempre tem 8 casas).
 
 ### AC-EXP-02 — Rateio igualitário com resto
 - **Quando** lanço R$ 100,00 dividido igualmente entre 3

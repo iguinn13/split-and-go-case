@@ -270,7 +270,7 @@ Os principais cenários de borda e como são tratados (lista completa em [`docs/
 
 ## Limitações conhecidas e decisões pendentes
 
-O que **não** está implementado e o que ainda aguarda decisão humana. Nenhum destes itens foi resolvido em specs ou contrato; os pontos abaixo descrevem o comportamento real do código.
+O que **não** está implementado e o que ainda aguarda decisão humana. Os pontos abaixo descrevem o comportamento real do código. Já decididos e documentados nas specs e no contrato: `403 FORBIDDEN` ao remover o dono (RN-GRP-08) e `exchangeRate` sempre com 8 casas (`"1.00000000"` na moeda-base).
 
 **Não implementado**
 
@@ -283,10 +283,8 @@ O que **não** está implementado e o que ainda aguarda decisão humana. Nenhum 
 
 | # | Tema | Comportamento atual | Onde ver |
 |---|---|---|---|
-| a | Código de erro ao remover o dono do grupo (RN-GRP-08) | Retorna `403 FORBIDDEN`; contrato e spec não definem um código específico. | `apps/api/src/modules/groups/remove-member.use-case.ts` |
-| b | Formato de `exchangeRate` em despesas na moeda-base | A API devolve 8 casas (`"1.00000000"`); AC-EXP-01 diz `"1"`. | `apps/api/src/common/money/convert-amount.ts`, `docs/specs/03-expenses.md` |
-| c | `GroupSummary` (`GET /groups`) não traz `baseCurrency` | A web faz um `GET /groups/:id` por grupo (N+1) para mostrar a moeda na lista. | `apps/web/src/app/groups/page.tsx`, `apps/api/src/modules/groups/group.mapper.ts` |
-| d | RF-UI-12: extrato com valor convertido | A linha do extrato da API não traz o valor convertido por despesa; a web só mostra o total convertido para quem pagou. | `apps/api/src/modules/balances/`, `apps/web/src/components/balances/` |
+| c | `GroupSummary` (`GET /groups`) e `baseCurrency` | API pronta: cada item da lista traz `baseCurrency`. Web pendente (#50): a lista ainda faz um `GET /groups/:id` por grupo (N+1). | `apps/web/src/app/groups/page.tsx`, `apps/api/src/modules/groups/list-groups.use-case.ts` |
+| d | RF-UI-12: extrato com valor convertido | API pronta: a linha do extrato traz `amountMinor` (total convertido da despesa, valor persistido). Web pendente (#50): hoje só mostra o total convertido para quem pagou. | `apps/api/src/modules/balances/`, `apps/web/src/components/balances/` |
 | e | Entrada de valor no formulário web | Um único separador é lido como decimal: colar `1.234` em moeda de 2 casas vira 1,23 e digitar `1.234,56` vira R$ 12.356,00. Limitação conhecida. | `apps/web/src/lib/expenses/money-input.ts` |
 | h | Guarda dos Route Handlers da web | `guardMutation`/`guardUuids` (origem e UUID) só protegem os handlers de despesas e quitação, não os de grupos, participantes e auth. | `apps/web/src/lib/http/guard.ts` |
 | i | Formatação do iene | A interface mostra `JP¥ 5.000`; AC-UI-10 diz `¥ 5.000`. | `apps/web/src/lib/money/format-money.ts`, `docs/specs/05-settlement-dashboard.md` |

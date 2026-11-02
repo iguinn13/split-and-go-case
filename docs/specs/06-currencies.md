@@ -93,7 +93,7 @@ Valores conferidos com aritmética `BigInt`; viram casos de teste de `convertAmo
 
 ### AC-CUR-07 — Mesma moeda com taxa diferente de 1
 - **Quando** `currency` é igual à moeda-base e `exchangeRate` é diferente de `1`
-- **Então** recebo `422 EXCHANGE_RATE_INVALID`; sem `exchangeRate`, a taxa registrada é `1`.
+- **Então** recebo `422 EXCHANGE_RATE_INVALID`; sem `exchangeRate`, a taxa registrada é `1` e a API a devolve como `"1.00000000"` (8 casas, como toda taxa gravada).
 
 ### AC-CUR-08 — Moeda não suportada
 - **Quando** envio `currency = "XYZ"`

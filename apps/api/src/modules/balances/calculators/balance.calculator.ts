@@ -28,6 +28,8 @@ export interface StatementLine {
   description: string;
   occurredOn: string;
   original: { currency: string; amountMinor: number; exchangeRate: string } | null;
+  /** Converted total of the expense in the group base currency (persisted value). */
+  amountMinor: number;
   paidMinor: number;
   owedMinor: number;
   netMinor: number;
@@ -104,6 +106,7 @@ export function buildStatement(
               amountMinor: expense.originalAmountMinor,
               exchangeRate: expense.exchangeRate,
             },
+      amountMinor: expense.amountMinor,
       paidMinor,
       owedMinor,
       netMinor,

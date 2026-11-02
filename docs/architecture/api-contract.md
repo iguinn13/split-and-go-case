@@ -25,7 +25,7 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 | 404 | `NOT_FOUND` | Rota inexistente |
 | 401 | `UNAUTHORIZED` | Token ausente, inválido ou expirado |
 | 401 | `INVALID_CREDENTIALS` | Login com e-mail ou senha incorretos |
-| 403 | `FORBIDDEN` | Autenticado, mas sem permissão (ex.: não é dono) |
+| 403 | `FORBIDDEN` | Autenticado, mas sem permissão (ex.: não é dono; tentar remover o dono do grupo, RN-GRP-08) |
 | 404 | `GROUP_NOT_FOUND` | Grupo inexistente ou sem vínculo com o usuário |
 | 404 | `MEMBER_NOT_FOUND` | Participante não existe no grupo |
 | 404 | `EXPENSE_NOT_FOUND` | Despesa não existe no grupo |
@@ -97,7 +97,7 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
   "members": [{ "id": "uuid", "name": "Ana", "email": "ana@example.com", "userId": "uuid" }]
 }
 // GroupSummary
-{ "id": "uuid", "name": "Viagem Floripa", "status": "OPEN", "memberCount": 4, "createdAt": "..." }
+{ "id": "uuid", "name": "Viagem Floripa", "baseCurrency": "BRL", "status": "OPEN", "memberCount": 4, "createdAt": "..." }
 ```
 
 ### Despesas (spec 03)
@@ -140,18 +140,19 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 | Método | Rota | Resposta |
 |---|---|---|
 | GET | `/groups/:groupId/balances` | `200 { currency, balances: [{ memberId, name, paidMinor, owedMinor, netMinor }] }` (`currency` = moeda-base) |
-| GET | `/groups/:groupId/members/:memberId/statement` | `200 Statement` |
+| GET | `/groups/:groupId/members/:memberId/statement` | `200 Statement` (`lines[].amountMinor` = total convertido da despesa, lido do valor persistido, nunca recalculado) |
 
 ```jsonc
 // Statement
 {
   "currency": "BRL",                      // moeda-base; todos os valores abaixo estão nela
   "member": { "id": "uuid", "name": "Ana" },
-  "totals": { "paidMinor": 10000, "owedMinor": 2500, "netMinor": 7500 },
+  "totals": { "paidMinor": 54325, "owedMinor": 13581, "netMinor": 40744 },
   "lines": [{
     "expenseId": "uuid", "description": "Jantar", "occurredOn": "2026-07-10",
     "original": { "currency": "USD", "amountMinor": 10000, "exchangeRate": "5.43250000" },  // null se moeda = base
-    "paidMinor": 10000, "owedMinor": 2500, "netMinor": 7500, "runningBalanceMinor": 7500
+    "amountMinor": 54325,                 // total da despesa convertido (valor persistido, moeda-base); igual ao original se moeda = base
+    "paidMinor": 54325, "owedMinor": 13581, "netMinor": 40744, "runningBalanceMinor": 40744
   }]
 }
 ```
@@ -191,5 +192,5 @@ Cada rota com entrada tem um schema Zod em `dto/` do módulo e é aplicada pelo 
 | Ler grupo, despesas, saldos, plano | Dono ou participante vinculado |
 | Criar despesa | Dono ou participante vinculado |
 | Editar/excluir despesa | Criador da despesa ou dono |
-| Editar grupo, adicionar/remover participante, fechar grupo | Dono |
+| Editar grupo, adicionar/remover participante, fechar grupo | Dono (o dono em si não pode ser removido: `403 FORBIDDEN`) |
 | Marcar transferência como paga | Dono ou participante vinculado |
