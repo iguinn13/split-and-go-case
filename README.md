@@ -70,7 +70,7 @@ flowchart LR
     prisma --> db
 ```
 
-Fluxo de autenticação: o navegador envia e-mail e senha ao Route Handler `POST /api/auth/login`, que chama `POST /auth/login` na API e grava o `accessToken` (JWT, 24 h) no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção). O navegador nunca lê o token: Server Components e Route Handlers o leem do cookie e o repassam à API como `Authorization: Bearer`. Sem cookie, `proxy.ts` redireciona para `/login`; uma resposta `401` da API leva a `/api/auth/expired`, que apaga o cookie. Mutações do navegador passam pelos Route Handlers (nunca falam direto com a API). O CORS da API (`CORS_ORIGIN`) existe, mas o fluxo da interface não depende dele. Ver [ADR 0003](docs/architecture/decisions/0003-jwt-httpOnly-cookie.md).
+Fluxo de autenticação: o navegador envia e-mail e senha ao Route Handler `POST /api/auth/login`, que chama `POST /auth/login` na API e grava o `accessToken` (JWT, 24 h) no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção). O navegador nunca lê o token: Server Components e Route Handlers o leem do cookie e o repassam à API como `Authorization: Bearer`. Sem cookie, `proxy.ts` redireciona para `/login`; uma resposta `401` da API leva a `/session-expired`, página que confirma a rejeição (`GET /auth/me`) e só então apaga o cookie por `POST /api/auth/logout` (nenhum `GET` altera o cookie, então um link externo não desloga ninguém). Todos os Route Handlers de mutação passam por `guardMutation` (Origin igual ao `Host`, `Content-Type` JSON) e validam UUIDs com `guardUuids`. Mutações do navegador passam pelos Route Handlers (nunca falam direto com a API). O CORS da API (`CORS_ORIGIN`) existe, mas o fluxo da interface não depende dele. Ver [ADR 0003](docs/architecture/decisions/0003-jwt-httpOnly-cookie.md).
 
 ### Infraestrutura e CI
 
@@ -205,7 +205,7 @@ Variáveis (em `.env`, modelo em `.env.example`):
 | `CORS_ORIGIN` | `http://localhost:3000` | Origem permitida pelo CORS da API; ao mudar `WEB_PORT`, ajuste junto |
 | `FX_PROVIDER_URL` | `https://api.frankfurter.dev/v1` | Provedor de câmbio (precisa de internet; sem ele o usuário informa a taxa manualmente) |
 | `POSTGRES_PORT`, `API_PORT`, `WEB_PORT` | `5432`, `3001`, `3000` | Portas publicadas no host |
-| `WEB_TRUST_FORWARDED_HOST` | vazio | Defina `1` somente atrás de um proxy reverso confiável que reescreva o `Host`: a web passa a comparar o `Origin` com `X-Forwarded-Host` (CSRF dos Route Handlers) |
+| `WEB_TRUST_FORWARDED_HOST` | vazio | Defina `1` somente atrás de um proxy reverso confiável que reescreva o `Host`: a web passa a comparar o `Origin` com `X-Forwarded-Host` (CSRF dos Route Handlers). O proxy deve **sobrescrever** (nunca acrescentar a) esse cabeçalho, pois o código lê o primeiro valor |
 
 `DATABASE_URL` e `API_URL` são definidas pelo `docker-compose.yml`. **Se a porta 5432 (ou outra) já estiver em uso**, defina `POSTGRES_PORT`, `API_PORT` e/ou `WEB_PORT` no `.env` (por exemplo `POSTGRES_PORT=25432`, `API_PORT=23001`, `WEB_PORT=23000` e `CORS_ORIGIN=http://localhost:23000`); para isolar do resto da máquina use também `docker compose -p outro-nome ...`.
 

@@ -35,6 +35,11 @@ function requestHost(request: Request): string | null {
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
   if (origin === null) return true; // non-browser clients cannot ride the session cookie
+  // `Referrer-Policy: no-referrer` makes browsers send the literal `Origin: null` on form posts;
+  // accept it only when the browser itself vouches the request is same-origin.
+  if (origin === 'null') return request.headers.get('sec-fetch-site') === 'same-origin';
+  // The scheme is deliberately not compared: the cookie is Secure in production and SameSite=Lax,
+  // and behind TLS termination the app cannot reliably tell which scheme the browser used.
   const host = requestHost(request);
   try {
     return host !== null && new URL(origin).host === host;

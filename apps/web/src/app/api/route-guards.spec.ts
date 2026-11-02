@@ -319,6 +319,31 @@ describe('cookie handling', () => {
   });
 });
 
+describe('Origin null (Referrer-Policy: no-referrer)', () => {
+  const logoutCase = cases[2]!;
+  const post = (headers: Record<string, string | null>) =>
+    call(logoutCase, build(logoutCase, headers));
+
+  it('lets a same-origin form post through and clears the cookie', async () => {
+    const res = await post({ origin: 'null', 'sec-fetch-site': 'same-origin' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('set-cookie')).toMatch(/sg_session=;/);
+  });
+
+  it('keeps refusing Origin null from any other context', async () => {
+    for (const site of ['cross-site', 'same-site', 'none', null]) {
+      const res = await post({ origin: 'null', 'sec-fetch-site': site });
+      expect(res.status).toBe(403);
+      expect(res.headers.get('set-cookie')).toBeNull();
+    }
+  });
+
+  it('refuses a foreign Origin regardless of Sec-Fetch-Site', async () => {
+    const res = await post({ origin: 'https://evil.example', 'sec-fetch-site': 'same-origin' });
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('Origin behind a proxy', () => {
   const c = cases[3]!;
 

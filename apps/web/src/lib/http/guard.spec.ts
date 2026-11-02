@@ -27,6 +27,20 @@ describe('guardMutation', () => {
     expect(guardMutation(req({ ...json, origin: 'https://evil.example' }))?.status).toBe(403);
   });
 
+  it('accepts Origin null only when Sec-Fetch-Site is same-origin', () => {
+    const nullOrigin = { ...json, origin: 'null' };
+    expect(guardMutation(req({ ...nullOrigin, 'sec-fetch-site': 'same-origin' }))).toBeNull();
+    for (const site of ['cross-site', 'same-site', 'none']) {
+      expect(guardMutation(req({ ...nullOrigin, 'sec-fetch-site': site }))?.status).toBe(403);
+    }
+    expect(guardMutation(req(nullOrigin))?.status).toBe(403);
+  });
+
+  it('still rejects a foreign Origin even when Sec-Fetch-Site says same-origin', () => {
+    const forged = { ...json, origin: 'https://evil.example', 'sec-fetch-site': 'same-origin' };
+    expect(guardMutation(req(forged))?.status).toBe(403);
+  });
+
   it('rejects non-JSON bodies with 415 unless json is not required', () => {
     const form = { host: 'localhost:3000', 'content-type': 'text/plain' };
     expect(guardMutation(req(form))?.status).toBe(415);
