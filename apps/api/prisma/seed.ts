@@ -1,6 +1,6 @@
-import { randomBytes, scryptSync } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, SplitType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (!databaseUrl) throw new Error('DATABASE_URL is required to seed the database');
@@ -101,11 +101,8 @@ const expenses: ExpenseSeed[] = [
   },
 ];
 
-function hashPassword(password: string): string {
-  const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, 64);
-  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
-}
+// Same algorithm and cost as the API (RN-AUTH-02), so the demo user can log in.
+const BCRYPT_COST = 12;
 
 async function main(): Promise<void> {
   await prisma.user.upsert({
@@ -115,7 +112,7 @@ async function main(): Promise<void> {
       id: DEMO_USER_ID,
       name: 'Demo User',
       email: 'demo@splitandgo.dev',
-      passwordHash: hashPassword('demo-password-123'),
+      passwordHash: await bcrypt.hash('demo-password-123', BCRYPT_COST),
     },
   });
 
