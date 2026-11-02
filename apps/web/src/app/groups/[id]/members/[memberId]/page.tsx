@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
-import { balancesHref } from '@/lib/balances/status';
+import { balancesHref, lineConvertedMinor } from '@/lib/balances/status';
 import type { Statement } from '@/lib/balances/types';
 import { conversionLine, formatDate } from '@/lib/expenses/format';
 import { isUuid } from '@/lib/http/guard';
@@ -83,11 +83,7 @@ export default async function StatementPage({
                 {line.original ? (
                   <p className="text-sm text-muted">
                     {/* The statement only carries the converted total when this member paid it. */}
-                    {conversionLine(
-                      line.original,
-                      line.paidMinor > 0 ? line.paidMinor : null,
-                      currency,
-                    )}
+                    {conversionLine(line.original, lineConvertedMinor(line), currency)}
                   </p>
                 ) : null}
               </div>
