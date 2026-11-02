@@ -5,11 +5,14 @@ import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { EXCHANGE_RATE_PROVIDER } from '../src/modules/exchange-rates/exchange-rate-provider.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+import { cleanupEmailDomain } from './support/e2e-harness.js';
 import { FakeExchangeRateProvider } from './support/fake-exchange-rate.provider.js';
 
 describe('Currencies and exchange rates (e2e)', () => {
   let app: INestApplication;
   const fake = new FakeExchangeRateProvider();
+  const domain = `-${Date.now()}@fx-e2e.dev`;
   const server = (): Server => app.getHttpServer() as Server;
   let auth: { Authorization: string };
 
@@ -20,7 +23,7 @@ describe('Currencies and exchange rates (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
-    const email = `fx-${Date.now()}@fx-e2e.dev`;
+    const email = `fx${domain}`;
     await request(server())
       .post('/auth/register')
       .send({ name: 'Fx', email, password: 'password-123' })
@@ -31,7 +34,10 @@ describe('Currencies and exchange rates (e2e)', () => {
       .expect(200);
     auth = { Authorization: `Bearer ${(login.body as { accessToken: string }).accessToken}` };
   });
-  afterAll(() => app.close());
+  afterAll(async () => {
+    await cleanupEmailDomain(app.get(PrismaService), domain);
+    await app.close();
+  });
 
   it('GET /currencies requires JWT', async () => {
     await request(server()).get('/currencies').expect(401);

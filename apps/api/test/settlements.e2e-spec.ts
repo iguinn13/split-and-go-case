@@ -5,6 +5,7 @@ import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { ExpensesService } from '../src/modules/expenses/expenses.service.js';
+import { cleanupEmailDomain } from './support/e2e-harness.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 interface GroupBody {
@@ -90,13 +91,7 @@ describe('Settlements (e2e)', () => {
   });
 
   afterAll(async () => {
-    const where = { group: { owner: { email: { endsWith: domain } } } };
-    await prisma.settlementTransfer.deleteMany({ where });
-    await prisma.expenseShare.deleteMany({ where: { expense: where } });
-    await prisma.expense.deleteMany({ where });
-    await prisma.groupMember.deleteMany({ where });
-    await prisma.group.deleteMany({ where: { owner: { email: { endsWith: domain } } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: domain } } });
+    await cleanupEmailDomain(prisma, domain);
     await app.close();
   });
 
