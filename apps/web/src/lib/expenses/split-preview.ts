@@ -106,8 +106,9 @@ export function previewSplit(input: PreviewInput): SplitPreview {
   const sameCurrency = currency === baseCurrency;
 
   if (originalAmountMinor === null) problems.push('Informe o valor da despesa.');
-  else if (originalAmountMinor < 1n || originalAmountMinor > MAX_AMOUNT_MINOR) {
-    problems.push('O valor deve estar entre 1 e 1.000.000.000 na menor unidade da moeda.');
+  else if (originalAmountMinor < 1n) problems.push('O valor deve ser maior que zero.');
+  else if (originalAmountMinor > MAX_AMOUNT_MINOR) {
+    problems.push('O valor deve ser de no máximo 1.000.000.000 na menor unidade da moeda.');
   }
 
   const weights = splitWeights(split, originalAmountMinor, currency, problems);

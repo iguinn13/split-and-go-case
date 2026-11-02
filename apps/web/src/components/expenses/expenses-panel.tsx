@@ -56,14 +56,24 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {newButton ? <div className="flex">{newButton}</div> : null}
+      {newButton && data.items.length > 0 ? <div className="flex">{newButton}</div> : null}
       {!closed && group.members.length < 2 ? (
         <p className="text-sm text-muted">
           Adicione pelo menos 2 participantes para lançar despesas.
         </p>
       ) : null}
 
-      {data.items.length === 0 ? (
+      {data.items.length === 0 && data.total > 0 ? (
+        <EmptyState
+          title="Esta página não existe"
+          description="As despesas mudaram desde que você abriu esta página."
+          action={
+            <Link href={expensesHref(group.id, lastPage)} className="font-semibold underline">
+              Ir para a última página
+            </Link>
+          }
+        />
+      ) : data.items.length === 0 ? (
         <EmptyState
           title="Nenhuma despesa lançada"
           description={

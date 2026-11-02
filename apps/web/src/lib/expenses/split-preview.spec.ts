@@ -247,3 +247,29 @@ describe('previewSplit (foreign currency)', () => {
     }
   });
 });
+
+describe('previewSplit (converted limits)', () => {
+  const run = (originalAmountMinor: bigint, exchangeRate: string) =>
+    previewSplit({
+      currency: 'USD',
+      baseCurrency: 'BRL',
+      exchangeRate,
+      originalAmountMinor,
+      split: equal(['a']),
+    });
+
+  it('accepts a converted total of exactly 1.000.000.000', () => {
+    expect(ok(run(500_000_000n, '2')).amountMinor).toBe(1_000_000_000n);
+  });
+
+  it('rejects a converted total of 1.000.000.001 (666.666.667 x 1,5 rounds half up)', () => {
+    expect(convertAmount(666_666_667n, '1.5', 'USD', 'BRL')).toEqual({
+      ok: false,
+      error: 'OUT_OF_RANGE',
+    });
+    expect(run(666_666_667n, '1.5')).toEqual({
+      ok: false,
+      problems: ['O valor convertido deve estar entre 1 e 1.000.000.000.'],
+    });
+  });
+});

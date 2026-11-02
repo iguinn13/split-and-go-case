@@ -32,7 +32,7 @@ const percentageSplit = z
           .object({
             memberId,
             basisPoints: z
-              .number({ error: 'Informe a porcentagem de cada participante.' })
+              .number({ error: 'Informe uma porcentagem maior que zero para cada participante.' })
               .int()
               .min(1, 'Informe uma porcentagem maior que zero para cada participante.')
               .max(10_000, 'A porcentagem não pode passar de 100%.'),
@@ -53,7 +53,7 @@ const fixedSplit = z
           .object({
             memberId,
             originalAmountMinor: z
-              .number({ error: 'Informe o valor de cada participante.' })
+              .number({ error: 'Informe um valor maior que zero para cada participante.' })
               .int()
               .min(1, 'Informe um valor maior que zero para cada participante.')
               .max(MAX_AMOUNT, 'O valor deve ser de no máximo 1.000.000.000.'),

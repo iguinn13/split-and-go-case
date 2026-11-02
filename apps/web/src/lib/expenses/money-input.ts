@@ -13,20 +13,26 @@ export function minorUnitsOf(currency: string): number {
  * one separator (normalised to a comma) followed by at most `minorUnits` digits.
  */
 export function sanitizeAmountInput(text: string, minorUnits: number): string {
+  const separators = [...text].filter((c) => c === ',' || c === '.');
+  // Pasted pt-BR/en-US thousands: with several separators, equal ones are thousands marks and,
+  // when they differ, only the last one is the decimal separator.
+  const decimalIndex =
+    minorUnits === 0 || separators.length === 0
+      ? -1
+      : separators.length === 1 || new Set(separators).size > 1
+        ? text.search(/[,.](?=[^,.]*$)/)
+        : -1;
   let integer = '';
   let fraction = '';
-  let separator = false;
-  for (const char of text) {
+  [...text].forEach((char, index) => {
     if (char >= '0' && char <= '9') {
-      if (separator) fraction += char;
+      if (decimalIndex >= 0 && index > decimalIndex) fraction += char;
       else integer += char;
-    } else if ((char === ',' || char === '.') && !separator && minorUnits > 0) {
-      separator = true;
     }
-  }
+  });
   integer = integer.replace(/^0+(?=\d)/, '').slice(0, 12);
   fraction = fraction.slice(0, minorUnits);
-  return separator ? `${integer},${fraction}` : integer;
+  return decimalIndex >= 0 ? `${integer},${fraction}` : integer;
 }
 
 /** Converts a masked amount ("1234,5") to minor units with string arithmetic only. */

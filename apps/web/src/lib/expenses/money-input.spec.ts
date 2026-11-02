@@ -28,7 +28,28 @@ describe('amount mask', () => {
     expect(sanitizeAmountInput('12,3456', 2)).toBe('12,34');
     expect(sanitizeAmountInput('abc1x2', 2)).toBe('12');
     expect(sanitizeAmountInput('007', 2)).toBe('7');
-    expect(sanitizeAmountInput('1,2,3', 2)).toBe('1,23');
+    expect(sanitizeAmountInput('1,2,3', 2)).toBe('123');
+  });
+
+  it('reads pasted thousands separators correctly', () => {
+    expect(sanitizeAmountInput('1.234,56', 2)).toBe('1234,56');
+    expect(sanitizeAmountInput('1,234.56', 2)).toBe('1234,56');
+    expect(sanitizeAmountInput('1.234.567', 2)).toBe('1234567');
+    expect(sanitizeAmountInput('1.234.567,89', 2)).toBe('1234567,89');
+    expect(parseAmountInput('1.234,56', 2)).toBe(123456n);
+    expect(parseAmountInput('1,234.56', 2)).toBe(123456n);
+    expect(parseAmountInput('1.234.567,89', 2)).toBe(123456789n);
+    expect(parseAmountInput('1.234.567', 2)).toBe(123456700n);
+    expect(parseAmountInput('1.234', 0)).toBe(1234n);
+    expect(parseAmountInput('1.234.567', 0)).toBe(1234567n);
+    expect(parseAmountInput('1,234.567', 0)).toBe(1234567n);
+  });
+
+  it('is idempotent', () => {
+    for (const text of ['1.234,56', '1,234.56', '1.234.567', '12,3', '5']) {
+      const once = sanitizeAmountInput(text, 2);
+      expect(sanitizeAmountInput(once, 2)).toBe(once);
+    }
   });
 
   it('returns null for empty input and stays exact for huge values', () => {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -98,6 +98,8 @@ export function ExpenseForm({
   });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [pending, setPending] = useState(false);
+  // Synchronous guard: state updates are async, so a fast second click could slip through.
+  const submitting = useRef(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const foreign = currency !== baseCurrency;
@@ -123,13 +125,18 @@ export function ExpenseForm({
           return;
         }
         const data = (await response.json()) as ExchangeRateSuggestion;
+        if (controller.signal.aborted) return;
         setRate(displayRate(data.rate));
         setSuggestion({ status: 'ok', source: data.source, date: data.date });
       })
       .catch(() => {
         if (!controller.signal.aborted) setSuggestion({ status: 'error' });
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // An aborted fetch never reports back: do not leave the hint stuck on "loading".
+      setSuggestion({ status: 'idle' });
+    };
   }, [foreign, currency, baseCurrency, date, rateTouched, retry]);
 
   function changeCurrency(next: string) {
@@ -188,8 +195,8 @@ export function ExpenseForm({
 
   const candidate = {
     description,
-    ...(foreign && apiRate ? { currency, exchangeRate: apiRate } : {}),
-    ...(!foreign ? { currency } : {}),
+    currency,
+    ...(foreign && apiRate ? { exchangeRate: apiRate } : {}),
     originalAmountMinor: originalAmountMinor === null ? undefined : Number(originalAmountMinor),
     paidByMemberId: paidBy,
     occurredOn: date,
@@ -230,7 +237,8 @@ export function ExpenseForm({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSave || !parsed.success) return;
+    if (!canSave || !parsed.success || submitting.current) return;
+    submitting.current = true;
     setPending(true);
     setServerError(null);
     const payload: ExpensePayload = parsed.data;
@@ -238,11 +246,13 @@ export function ExpenseForm({
       ? `/api/groups/${groupId}/expenses/${expense.id}`
       : `/api/groups/${groupId}/expenses`;
     const response = await mutate(url, { method: expense ? 'PUT' : 'POST', body: payload });
-    setPending(false);
     if (!response.ok) {
+      submitting.current = false;
+      setPending(false);
       setServerError(response.message);
       return;
     }
+    // On success stay pending until the navigation replaces the page (no second submit).
     router.push(expensesHref(groupId));
     router.refresh();
   }
@@ -312,7 +322,7 @@ export function ExpenseForm({
               setRateTouched(true);
             }}
             onBlur={() => touch('rate')}
-            aria-describedby="rate-hint"
+            describedBy="rate-hint"
           />
           <p id="rate-hint" className="text-sm text-muted">
             {suggestionHint}
