@@ -16,7 +16,7 @@ export function balanceStatus(netMinor: number): BalanceStatus {
   if (netMinor > 0) {
     return {
       kind: 'receives',
-      label: 'recebe',
+      label: 'deve',
       icon: '+',
       textClass: 'text-emerald-800',
       borderClass: 'border-l-emerald-700',
