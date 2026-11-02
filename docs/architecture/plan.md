@@ -8,57 +8,66 @@ Este documento descreve **como** o Split&Go é construído. O **quê** está em 
 flowchart LR
     user([Usuário<br/>navegador / celular])
 
-    subgraph web["apps/web — Next.js"]
-        pages["Páginas e componentes (App Router)"]
-        bff["Route Handlers<br/>sessão em cookie httpOnly"]
+    subgraph web["apps/web — Next.js (App Router)"]
+        proxy["proxy.ts<br/>exige cookie de sessão"]
+        pages["Server Components<br/>(leitura via serverApi)"]
+        bff["Route Handlers /api/*<br/>login · logout · grupos · despesas · câmbio · quitação"]
     end
 
     subgraph api["apps/api — NestJS (monolito modular)"]
         direction TB
+        guard["JwtAuthGuard global<br/>(@Public: health, register, login)"]
         ctrl["Controllers<br/>validação Zod"]
         uc["Use Cases"]
-        calc["Calculators (funções puras)<br/>money · split · balance · debt-simplifier"]
+        calc["Funções puras<br/>split · balance · settlement-plan · debt-simplifier<br/>common/money"]
         repo["Repositories / Services"]
         prisma["Prisma Client"]
-        ctrl --> uc
-        provider["ExchangeRateProvider<br/>(cache em memória)"]
+        provider["ExchangeRateProvider<br/>(Frankfurter)"]
+        cache["Cache em memória<br/>(1 h, no use case)"]
+        guard --> ctrl --> uc
         uc --> calc
         uc --> repo
-        uc --> provider
+        uc --> cache --> provider
         repo --> prisma
     end
 
     db[("PostgreSQL")]
-    fx(["API de câmbio<br/>BCE via Frankfurter"])
-    provider -->|"sugestão de taxa"| fx
+    fx(["Frankfurter<br/>taxas do BCE"])
+    provider -->|"GET /{data}?base&symbols<br/>timeout 3 s"| fx
 
-    user -->|HTTPS| pages
-    pages --> bff
-    bff -->|"HTTP + JWT"| ctrl
+    user -->|HTTP| proxy --> pages
+    user -->|"fetch (mesma origem)"| bff
+    pages -->|"Authorization: Bearer"| guard
+    bff -->|"Authorization: Bearer"| guard
     prisma --> db
 ```
 
-### Infraestrutura
+Fluxo de autenticação: o navegador envia e-mail e senha ao Route Handler `POST /api/auth/login`, que chama `POST /auth/login` na API e grava o `accessToken` (JWT, 24 h) no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção). O navegador nunca lê o token: Server Components e Route Handlers o leem do cookie e o repassam à API como `Authorization: Bearer`. Sem cookie, `proxy.ts` redireciona para `/login`; uma resposta `401` da API leva a `/api/auth/expired`, que apaga o cookie. Mutações do navegador passam pelos Route Handlers (nunca falam direto com a API). O CORS da API (`CORS_ORIGIN`) existe, mas o fluxo da interface não depende dele. Ver [ADR 0003](decisions/0003-jwt-httpOnly-cookie.md).
+
+### Infraestrutura e CI
 
 ```mermaid
 flowchart TB
     subgraph local["Execução local — docker compose"]
         w["web :3000"]
-        a["api :3001"]
-        p[("postgres :5432<br/>volume nomeado")]
-        w --> a --> p
+        a["api :3001<br/>prisma migrate deploy na subida"]
+        p[("postgres :5432<br/>volume postgres-data")]
+        w -->|"API_URL=http://api:3001"| a --> p
     end
 
-    subgraph prod["Hospedagem sugerida"]
-        v["Vercel — web"]
-        r["Render ou Railway — api"]
-        n[("Postgres gerenciado")]
-        v --> r --> n
+    subgraph ci["GitHub Actions (.github/workflows/ci.yml)"]
+        t["pr-title<br/>commitlint no título do PR"]
+        v["verify<br/>lint · typecheck · test · build<br/>(Postgres 17 como service)"]
+        e["e2e<br/>Playwright contra o stack Docker Compose<br/>(projeto splitgo-e2e, portas 13000/13001/15432,<br/>fx-stub no lugar do Frankfurter)"]
     end
 
-    gh["GitHub Actions<br/>lint · test · build"]
-    gh -.->|"deploy após CI verde"| prod
+    subgraph prod["Publicação (NÃO implementada, task #22)"]
+        d["sem ambiente publicado"]
+    end
+    ci -.->|"deploy não existe"| prod
 ```
+
+Os testes e2e usam `apps/web/e2e/docker-compose.e2e.yml`, que troca o provedor de câmbio real por um stub local (`fx-stub`), de modo que nenhum teste depende da internet.
 
 | Componente | Escolha | Por quê |
 |---|---|---|
@@ -86,7 +95,7 @@ Controller  →  Use Case  →  Repository / Service
 | **Controller** | Rotas, autenticação (guard), parse e validação Zod, chamar um use case, formatar resposta. | Regra de negócio, acesso a banco. |
 | **Use Case** | Um caso de uso = uma classe com `execute()`. Autorização por grupo, carregar dados, chamar calculators, persistir (em transação quando preciso). | Conhecer HTTP. |
 | **Repository** | Consultas Prisma de um módulo. Retorna tipos do Prisma ou DTOs simples. | Regra de negócio. |
-| **Service** | Lógica reutilizável entre use cases do mesmo módulo ou integração (ex.: `PasswordService`, `TokenService`). | — |
+| **Service** | Lógica reutilizável entre use cases do mesmo módulo ou integração (ex.: `PasswordService`; o JWT é assinado com o `JwtService` do `@nestjs/jwt`). | — |
 | **Calculator** | Função pura com a regra complexa. | Acessar banco, relógio, rede. |
 
 ### Módulos (por domínio)
@@ -99,11 +108,12 @@ apps/api/src/
 │   ├── zod/                 #   ZodValidationPipe, helpers
 │   ├── errors/              #   AppError, filtro global, códigos de erro
 │   ├── auth/                #   JwtAuthGuard, @CurrentUser()
-│   └── money/               #   catálogo de moedas, convertAmount, parse de taxa, limites
+│   └── money/               #   catálogo de moedas, convertAmount, allocateProportionally, parse de taxa, limites
+├── config/                  # validação das variáveis de ambiente (Zod)
 ├── prisma/                  # PrismaModule / PrismaService
 └── modules/
-    ├── auth/                #   register, login, me
-    ├── users/               #   consulta de usuário (usado por auth e groups)
+    ├── auth/                #   register, login, me (inclui UsersRepository)
+    ├── health/              #   GET /health
     ├── groups/              #   grupos e participantes, autorização de acesso
     ├── currencies/          #   catálogo de moedas (GET /currencies)
     ├── exchange-rates/      #   sugestão de taxa (GET /exchange-rates) + ExchangeRateProvider
@@ -119,13 +129,13 @@ modules/expenses/
 ├── expenses.module.ts
 ├── expenses.controller.ts
 ├── dto/                         # schemas Zod + tipos inferidos
-│   └── create-expense.schema.ts
-├── use-cases/
-│   ├── create-expense.use-case.ts
-│   ├── update-expense.use-case.ts
-│   ├── delete-expense.use-case.ts
-│   ├── get-expense.use-case.ts
-│   └── list-expenses.use-case.ts
+│   └── expense.schemas.ts
+├── create-expense.use-case.ts   # use cases na raiz do módulo (sem subpasta)
+├── update-expense.use-case.ts
+├── delete-expense.use-case.ts
+├── get-expense.use-case.ts
+├── list-expenses.use-case.ts
+├── expenses.service.ts          # listForBalance, usado por balances e settlements
 ├── expenses.repository.ts
 └── calculators/
     ├── split.calculator.ts
@@ -134,16 +144,16 @@ modules/expenses/
 
 **Regras de dependência entre módulos**
 
-- `groups` é a fonte de verdade de acesso: expõe `GroupAccessService.assertCanRead / assertIsOwner`, usado por `expenses`, `balances` e `settlements`.
+- `groups` é a fonte de verdade de acesso: expõe `GroupAccessService.assertCanRead / assertIsOwner`, usado por `expenses`, `balances` e `settlements`. Regras de escrita em despesas (grupo aberto, criador ou dono) ficam em `modules/expenses/expense-access.ts`.
 - `balances` lê despesas por meio de `ExpensesService.listForBalance(groupId)`, nunca pelo repository de `expenses`.
-- `settlements` usa `BalancesService` + `debt-simplifier`.
-- Sem dependências circulares: `settlements → balances → expenses → groups → users`; `auth → users`.
+- `settlements` usa `ExpensesService.listForBalance` + `calculateBalances` + `debt-simplifier`.
+- Sem dependências circulares: `settlements → expenses → groups`; `balances → expenses → groups`.
 
 ### Interfaces: apenas quando necessárias
 
 Classes concretas são injetadas diretamente pelo DI do Nest. Uma interface só entra se houver duas implementações reais ou uma fronteira externa que precise ser simulada em teste.
 
-**Única interface do MVP: `ExchangeRateProvider`.** É uma fronteira externa (HTTP) que precisa ser trocada por uma implementação falsa nos testes e pode ter outro provedor no futuro. Implementações: `FrankfurterExchangeRateProvider` (real) e `FakeExchangeRateProvider` (testes). Decisão registrada nos ADRs 0004 e 0006.
+**Única interface do MVP: `ExchangeRateProvider`.** É uma fronteira externa (HTTP) que precisa ser trocada por uma implementação falsa nos testes e pode ter outro provedor no futuro. Implementações: `FrankfurterExchangeRateProvider` (real) e `FakeExchangeRateProvider` (testes, em `apps/api/test/support/`). O cache em memória (TTL de 1 h) fica em `GetExchangeRateUseCase`, não no provider. Decisão registrada nos ADRs 0004 e 0006.
 
 ## 3. Como tratamos regras complexas sem DDD
 
@@ -166,7 +176,7 @@ sequenceDiagram
     participant R as ExpensesRepository
 
     C->>U: execute(userId, groupId, input válido)
-    U->>G: assertCanWrite(userId, groupId)
+    U->>G: assertCanRead(groupId, userId) e assertCanHaveExpenses (grupo aberto, 2+ participantes)
     U->>U: valida pagador, participantes e moeda
     U->>S: convertAmount(original, taxa) e allocate(...)
     S-->>U: valor convertido + shares originais e convertidas (somas exatas)
@@ -184,7 +194,8 @@ sequenceDiagram
 | `calculateShares(input)` | valor original, valor convertido e regra (`EQUAL` / `PERCENTAGE` / `FIXED`) | `[{ memberId, originalAmountMinor, amountMinor }]`, somas exatas nas duas moedas |
 | `calculateBalances(expenses)` | despesas com pagador e partes | `Map<memberId, netMinor>` com soma `0` |
 | `buildStatement(memberId, expenses)` | despesas do grupo | linhas com saldo acumulado |
-| `simplifyDebts(balances)` | `Map<memberId, netMinor>` | `[{ from, to, amountMinor }]` mínimo |
+| `simplifyDebts(balances)` | saldos por participante | `[{ from, to, amountMinor }]` mínimo (exato até 16 saldos; `simplifyDebtsGreedy` acima disso) |
+| `calculateSettlementPlan(...)` | saldos | plano de transferências na moeda-base |
 
 ### Algoritmo de simplificação (resumo; detalhes no ADR 0002)
 
@@ -201,8 +212,8 @@ sequenceDiagram
 
 ## 5. Autenticação e autorização
 
-- `POST /auth/login` retorna um JWT (24h). O Next guarda o token em cookie `httpOnly`, `SameSite=Lax`, `Secure` em produção, e repassa à API no header `Authorization: Bearer`.
-- `JwtAuthGuard` global; rotas públicas marcadas com `@Public()` (`/health`, `/auth/register`, `/auth/login`).
+- `POST /auth/login` retorna um JWT (24h). O Next guarda o token no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção, 24 h), e repassa à API no header `Authorization: Bearer`.
+- `JwtAuthGuard` global (`APP_GUARD` em `auth.module.ts`); rotas públicas marcadas com `@Public()` (`/health`, `/auth/register`, `/auth/login`).
 - Autorização por grupo no use case via `GroupAccessService` (dono vs. participante vinculado). Acesso sem vínculo → `404`.
 
 ## 6. Tratamento de erros
@@ -213,7 +224,7 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 
 - Next.js (App Router) + TypeScript + Tailwind CSS.
 - Server Components para leitura; Client Components para formulários interativos (prévia do rateio).
-- Cliente de API tipado em `apps/web/src/lib/api`; schemas Zod compartilhados reaproveitados quando fizer sentido (pacote `packages/shared`, opcional).
+- Cliente de API tipado em `apps/web/src/lib/api`; schemas Zod compartilhados reaproveitados quando fizer sentido (pacote `packages/shared`, hoje vazio).
 - Formatação monetária com `Intl.NumberFormat('pt-BR', { style: 'currency', currency })`, usando a moeda e as casas decimais do catálogo (`GET /currencies`) e dividindo a menor unidade apenas para exibição.
 - O formulário de despesa busca a taxa sugerida em `GET /exchange-rates` (via Route Handler), permite editá-la e espelha em prévia a conversão e o rateio (mesmas regras de `allocateProportionally`).
 
@@ -225,7 +236,7 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 │   ├── api/                 # NestJS + Prisma
 │   └── web/                 # Next.js
 ├── packages/
-│   └── shared/              # (opcional) schemas Zod e tipos comuns
+│   └── shared/              # placeholder sem código (workspace declarado)
 ├── docs/                    # specs, arquitetura, engenharia, tasks, IA
 ├── scripts/board/           # automação do quadro de tarefas
 ├── .claude/                 # agentes e skills
@@ -237,11 +248,13 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 
 ## 9. Observabilidade mínima
 
-- Logs estruturados (JSON) com `requestId`.
+- **Não implementado:** logs estruturados (JSON) com `requestId`; hoje só o `Logger` padrão do Nest (erros 5xx).
 - `GET /health` verifica API e conexão com o banco.
 - Erros 5xx logados com stack; 4xx apenas com código.
 
-## 10. Hospedagem sugerida (bônus de deploy)
+## 10. Hospedagem sugerida (bônus de deploy; NÃO implementada, task #22)
+
+Proposta; não há deploy nem URL pública.
 
 - **Web:** Vercel.
 - **API + Postgres:** Render ou Railway, com migrations via `prisma migrate deploy` no release.
