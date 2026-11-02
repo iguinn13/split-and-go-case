@@ -44,6 +44,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const visible = (field: keyof Values) => (touched[field] ? errors[field] : undefined);
 
   const bind = (field: keyof Values) => ({
+    id: `${mode}-${field}`,
     name: field,
     value: values[field],
     error: visible(field),

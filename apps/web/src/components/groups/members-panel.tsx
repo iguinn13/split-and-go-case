@@ -121,6 +121,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
         >
           <h3 className="font-semibold">Adicionar participante</h3>
           <Input
+            id="member-name"
             label="Nome"
             value={name}
             error={submitted ? errors['name'] : undefined}
@@ -129,6 +130,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
             maxLength={60}
           />
           <Input
+            id="member-email"
             label="E-mail (opcional)"
             type="email"
             inputMode="email"

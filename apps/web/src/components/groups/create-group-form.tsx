@@ -89,6 +89,7 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
       ) : null}
 
       <Input
+        id="group-name"
         label="Nome do grupo"
         name="name"
         value={name}
@@ -155,6 +156,7 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
               className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3"
             >
               <Input
+                id={`member-${row.key}-name`}
                 label={`Nome do participante ${index + 1}`}
                 value={row.name}
                 error={rowError(row, 'name')}
@@ -163,6 +165,7 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
                 maxLength={60}
               />
               <Input
+                id={`member-${row.key}-email`}
                 label={`E-mail do participante ${index + 1} (opcional)`}
                 type="email"
                 inputMode="email"

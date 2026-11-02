@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/paths';
 import { Select } from '@/components/ui/select';
 import { expensesHref, todayIso } from '@/lib/expenses/format';
 import {
@@ -117,7 +118,7 @@ export function ExpenseForm({
     fetch(`/api/exchange-rates?${query.toString()}`, { signal: controller.signal })
       .then(async (response) => {
         if (response.status === 401) {
-          window.location.assign('/api/auth/expired');
+          window.location.assign(SESSION_EXPIRED_PATH);
           return;
         }
         if (!response.ok) {
@@ -274,6 +275,7 @@ export function ExpenseForm({
       className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4"
     >
       <Input
+        id="expense-description"
         label="Descrição"
         value={description}
         maxLength={120}
@@ -285,6 +287,7 @@ export function ExpenseForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
+          id="expense-currency"
           label="Moeda"
           value={currency}
           options={currencies.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
@@ -292,6 +295,7 @@ export function ExpenseForm({
         />
         <div className="flex flex-col gap-1">
           <Input
+            id="expense-amount"
             label={`Valor (${currency})`}
             inputMode={units === 0 ? 'numeric' : 'decimal'}
             autoComplete="off"
@@ -312,6 +316,7 @@ export function ExpenseForm({
       {foreign ? (
         <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
           <Input
+            id="expense-rate"
             label={`Taxa de câmbio (1 ${currency} em ${baseCurrency})`}
             inputMode="decimal"
             autoComplete="off"
@@ -322,9 +327,9 @@ export function ExpenseForm({
               setRateTouched(true);
             }}
             onBlur={() => touch('rate')}
-            describedBy="rate-hint"
+            describedBy="expense-rate-hint"
           />
-          <p id="rate-hint" className="text-sm text-muted">
+          <p id="expense-rate-hint" className="text-sm text-muted">
             {suggestionHint}
           </p>
           {suggestion.status === 'error' ? (
@@ -353,12 +358,14 @@ export function ExpenseForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
+          id="expense-paid-by"
           label="Pago por"
           value={paidBy}
           options={members.map((m) => ({ value: m.id, label: m.name }))}
           onChange={(e) => setPaidBy(e.target.value)}
         />
         <Input
+          id="expense-date"
           label="Data"
           type="date"
           value={date}
@@ -418,6 +425,7 @@ export function ExpenseForm({
                 <div className="flex flex-wrap items-center gap-3">
                   {checked && splitType !== 'EQUAL' ? (
                     <Input
+                      id={`expense-share-${member.id}`}
                       label={
                         splitType === 'PERCENTAGE'
                           ? `Porcentagem de ${member.name} (%)`
