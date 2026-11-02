@@ -49,5 +49,5 @@ export function transferStatusView(status: TransferStatus): TransferStatusView {
   if (status === 'PAID') {
     return { label: 'Paga', icon: '✓', className: 'text-emerald-800' };
   }
-  return { label: 'Pendente', icon: '◷', className: 'text-muted' };
+  return { label: 'Pendente', icon: '◷', className: 'text-muted-foreground' };
 }

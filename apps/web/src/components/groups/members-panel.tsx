@@ -95,7 +95,9 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
                     </span>
                   ) : null}
                 </p>
-                <p className="break-all text-sm text-muted">{member.email ?? 'Sem e-mail'}</p>
+                <p className="break-all text-sm text-muted-foreground">
+                  {member.email ?? 'Sem e-mail'}
+                </p>
               </div>
               {canEdit && !isGroupOwner ? (
                 <Button
@@ -119,7 +121,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
           aria-busy={adding}
           className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
         >
-          <h3 className="font-semibold">Adicionar participante</h3>
+          <h2 className="font-semibold">Adicionar participante</h2>
           <Input
             id="member-name"
             label="Nome"
@@ -146,7 +148,9 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
       ) : null}
 
       {!isOwner && !closed ? (
-        <p className="text-sm text-muted">Somente o dono do grupo pode gerenciar participantes.</p>
+        <p className="text-sm text-muted-foreground">
+          Somente o dono do grupo pode gerenciar participantes.
+        </p>
       ) : null}
     </div>
   );

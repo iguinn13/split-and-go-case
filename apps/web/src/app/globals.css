@@ -1,27 +1,182 @@
 @import 'tailwindcss';
 
-/* Central theme: colors and spacing used across the app. */
-@theme {
-  --color-brand-50: #eef6ff;
-  --color-brand-600: #1d4ed8;
-  --color-brand-700: #1e40af;
-  --color-surface: #ffffff;
-  --color-page: #f8fafc;
-  --color-ink: #0f172a;
-  --color-muted: #475569;
-  --color-line: #cbd5e1;
-  --color-danger-50: #fef2f2;
-  --color-danger-700: #b91c1c;
+/*
+ * Design tokens (Split&Go design system, issue #52).
+ *
+ * 1. Raw values live in :root (shadcn/ui convention), so a dark theme can later override them.
+ * 2. `@theme inline` maps them to Tailwind utilities (bg-primary, text-muted-foreground...).
+ * Every foreground/background pair used by the components is checked for WCAG AA in
+ * src/lib/ui/contrast.spec.ts, which reads this file. Change a value here and that test tells you
+ * if a pair dropped below 4.5:1 (text) or 3:1 (UI components).
+ */
+:root {
+  --background: #f5f7f6;
+  --foreground: #17241f;
+  --card: #ffffff;
+  --card-foreground: #17241f;
+  --muted: #eaf0ed;
+  --muted-foreground: #4b5b54;
+  /* Decorative separators only; field borders use --input (3:1). */
+  --border: #d3dbd7;
+  --input: #6f7f78;
+  --ring: #0b7a54;
+
+  --primary: #0b7a54;
+  --primary-hover: #086446;
+  --primary-foreground: #ffffff;
+  --accent: #def3ea;
+  --accent-foreground: #075a3f;
+  /* Dark green for links and active-tab text. */
+  --link: #075f42;
+  /* Bright brand green: decorative only (never text, never the only cue). */
+  --brand: #34c38f;
+
+  --destructive: #c0262d;
+  --destructive-hover: #a31f25;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fdecec;
+  --destructive-soft-foreground: #9a1b21;
+  --warning-soft: #fff3d1;
+  --warning-soft-foreground: #744000;
+  --success-soft: #def3ea;
+  --success-soft-foreground: #075a3f;
+
+  /* Balances: "recebe" (is owed) and "deve" (owes). Always paired with a word or a sign. */
+  --positive: #0a7048;
+  --negative: #b8400a;
+
+  /* Avatar palette: soft background + dark text, picked deterministically from the name. */
+  --avatar-1: #d9f0e6;
+  --avatar-1-foreground: #0a5a3e;
+  --avatar-2: #dbeafe;
+  --avatar-2-foreground: #1e3a8a;
+  --avatar-3: #fde7d3;
+  --avatar-3-foreground: #8a3a07;
+  --avatar-4: #f3e1f7;
+  --avatar-4-foreground: #6b216f;
+  --avatar-5: #fde0e6;
+  --avatar-5-foreground: #9b1c3a;
+  --avatar-6: #fff0c2;
+  --avatar-6-foreground: #6b4200;
+  --avatar-7: #d9f1f5;
+  --avatar-7-foreground: #0b5563;
+  --avatar-8: #e5e7f9;
+  --avatar-8-foreground: #33398a;
+
+  --radius: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(23 36 31 / 0.06), 0 1px 3px rgb(23 36 31 / 0.08);
+  --shadow-pop: 0 10px 30px rgb(23 36 31 / 0.18);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-link: var(--link);
+  --color-brand: var(--brand);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-avatar-1: var(--avatar-1);
+  --color-avatar-1-foreground: var(--avatar-1-foreground);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-2-foreground: var(--avatar-2-foreground);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-3-foreground: var(--avatar-3-foreground);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-4-foreground: var(--avatar-4-foreground);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-5-foreground: var(--avatar-5-foreground);
+  --color-avatar-6: var(--avatar-6);
+  --color-avatar-6-foreground: var(--avatar-6-foreground);
+  --color-avatar-7: var(--avatar-7);
+  --color-avatar-7-foreground: var(--avatar-7-foreground);
+  --color-avatar-8: var(--avatar-8);
+  --color-avatar-8-foreground: var(--avatar-8-foreground);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+
+  /* System font stack: no web font, so no external request and no layout shift. */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  /* Type scale on top of Tailwind's defaults. */
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.5rem;
+  --text-amount: 1.25rem;
+  --text-amount--line-height: 1.75rem;
+
   --spacing-page: 1rem;
-  --radius-card: 0.75rem;
 }
 
-body {
-  background: var(--color-page);
-  color: var(--color-ink);
+/*
+ * Legacy aliases (to be removed when the screens are redesigned in #53-#55). They map the old
+ * names to the new tokens so screens that were not migrated yet keep rendering correctly.
+ */
+@theme inline {
+  --color-brand-50: var(--accent);
+  --color-brand-600: var(--primary);
+  --color-brand-700: var(--link);
+  --color-surface: var(--card);
+  --color-page: var(--background);
+  --color-ink: var(--foreground);
+  --color-line: var(--input);
+  --color-danger-50: var(--destructive-soft);
+  --color-danger-700: var(--destructive-soft-foreground);
+  --radius-card: var(--radius);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: 2px;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+
+  /* Visible focus for every interactive element; components add their own ring on top. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

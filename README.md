@@ -9,6 +9,7 @@ Gestão e rateio inteligente de despesas em grupo. Lance os gastos de uma viagem
 - [O que o produto faz](#o-que-o-produto-faz)
 - [Arquitetura](#arquitetura)
 - [Stack e justificativas](#stack-e-justificativas)
+- [Design system](#design-system)
 - [Demonstração](#demonstração)
 - [Como rodar localmente](#como-rodar-localmente)
 - [Algoritmo de simplificação de saldo](#algoritmo-de-simplificação-de-saldo)
@@ -141,6 +142,16 @@ Detalhes: [`docs/architecture/plan.md`](docs/architecture/plan.md), [`data-model
 | CI | **GitHub Actions** | Três jobs a cada PR: título do PR (commitlint), `verify` (lint, typecheck, testes e build) e `e2e` (Playwright). |
 | Câmbio | Frankfurter (taxas do BCE) | Sugestão gratuita de taxa por data; o usuário confirma ou edita (ADR 0006). |
 | Fila / cache | Sem fila; cache em memória só para taxas (TTL de 1 h) | Os cálculos levam milissegundos (ADR 0005). |
+
+## Design system
+
+Front-end em `apps/web` com shadcn/ui + Radix + Lucide sobre Tailwind v4.
+
+- **Tokens:** `apps/web/src/app/globals.css` (`:root` + `@theme inline`). Use sempre utilitários semânticos (`bg-primary`, `text-muted-foreground`, `text-positive`/`text-negative` para "recebe"/"deve"); nunca cores literais nos componentes.
+- **Componentes:** `apps/web/src/components/ui/` (`Button`, `Input`, `Select`, `Card`, `Dialog`, `NavTabs`, `Badge`, `Avatar`, `Skeleton`, `EmptyState`, `ErrorState`, `PageHeader`, `Wordmark`, `Toaster`). Server Components por padrão; `'use client'` só em `Dialog` e `Toaster`.
+- **Adicionar um componente shadcn:** `cd apps/web && pnpm dlx shadcn@latest add <componente>` (usa `components.json`). Revise o arquivo gerado: troque cores literais por tokens, mantenha textos em pt-BR, instale só os pacotes Radix usados e fixe a versão como no restante do `package.json`.
+- **Regras de acessibilidade:** todo campo tem rótulo e `id` explícito (`Input` e `Select` exigem `id`); erros em `role="alert"` quando anunciados ao vivo; estado nunca só por cor (palavra, sinal ou ícone junto); foco visível; alvos de toque de 44 px; funciona em 360 px; todo par de cores novo entra em `apps/web/src/lib/ui/contrast.spec.ts` (AA).
+- **Tema escuro:** não implementado (follow-up: sobrescrever tokens e estender o teste de contraste).
 
 ## Demonstração
 

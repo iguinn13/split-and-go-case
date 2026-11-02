@@ -300,7 +300,7 @@ export function ExpenseForm({
               </p>
             ) : null}
             {amountParse.ok && amountParse.thousandsHint ? (
-              <p className="text-sm text-muted" data-testid="amount-hint">
+              <p className="text-sm text-muted-foreground" data-testid="amount-hint">
                 Lido como {formatMoney(amountParse.minor, currency)} (o separador marca milhares).
                 Para centavos, digite 1,23.
               </p>
@@ -325,7 +325,7 @@ export function ExpenseForm({
             onBlur={() => touch('rate')}
             describedBy="expense-rate-hint"
           />
-          <p id="expense-rate-hint" className="text-sm text-muted">
+          <p id="expense-rate-hint" className="text-sm text-muted-foreground">
             {suggestionHint}
           </p>
           {suggestion.status === 'error' ? (
@@ -449,14 +449,14 @@ export function ExpenseForm({
                     <span className="text-sm" data-testid={`share-${member.id}`}>
                       {foreign ? (
                         <>
-                          <span className="text-muted">
+                          <span className="text-muted-foreground">
                             {formatMoney(share.originalAmountMinor, currency)} →{' '}
                           </span>
                         </>
                       ) : null}
                       <strong>{formatMoney(share.amountMinor, baseCurrency)}</strong>
                       {splitType === 'PERCENTAGE' ? (
-                        <span className="text-muted">
+                        <span className="text-muted-foreground">
                           {' '}
                           ({formatBasisPoints(parsePercentInput(values[member.id] ?? '') ?? 0n)})
                         </span>

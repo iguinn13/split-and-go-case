@@ -59,7 +59,7 @@ export default async function StatementPage({
           <span className="font-medium">Saldo final</span>
           <BalanceAmount netMinor={totals.netMinor} currency={currency} />
         </div>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Pagou {formatMoney(totals.paidMinor, currency)} · Parte{' '}
           {formatMoney(totals.owedMinor, currency)}
         </p>
@@ -79,9 +79,9 @@ export default async function StatementPage({
             >
               <div>
                 <p className="break-words font-medium">{line.description}</p>
-                <p className="text-sm text-muted">{formatDate(line.occurredOn)}</p>
+                <p className="text-sm text-muted-foreground">{formatDate(line.occurredOn)}</p>
                 {line.original ? (
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     {conversionLine(line.original, line.amountMinor, currency)}
                   </p>
                 ) : null}
@@ -106,7 +106,7 @@ export default async function StatementPage({
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-muted">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
   );

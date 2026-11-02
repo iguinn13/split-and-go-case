@@ -228,6 +228,15 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 - Formatação monetária com `Intl.NumberFormat('pt-BR', { style: 'currency', currency })`, usando a moeda e as casas decimais do catálogo (`GET /currencies`) e dividindo a menor unidade apenas para exibição.
 - O formulário de despesa busca a taxa sugerida em `GET /exchange-rates` (via Route Handler), permite editá-la e espelha em prévia a conversão e o rateio (mesmas regras de `allocateProportionally`).
 
+### Design system (task #52)
+
+Base visual do front-end, no estilo de apps de rateio (identidade verde, listas densas, avatar + valor à direita), com marca própria (Split&Go: ícone Lucide + texto). Detalhes de uso em [README](../../README.md#design-system).
+
+- **Stack:** shadcn/ui (convenção de `components.json`, componentes copiados para `apps/web/src/components/ui/`), Radix (somente `@radix-ui/react-dialog`), `class-variance-authority`, `clsx` + `tailwind-merge` (`cn` em `lib/utils.ts`), `lucide-react` e `sonner` (toast).
+- **Tokens:** `apps/web/src/app/globals.css`. Valores brutos em `:root` (cores semânticas: `background`, `foreground`, `card`, `muted`, `primary`, `link`, `destructive`, `positive` = "recebe", `negative` = "deve", `ring`...) mapeados por `@theme inline` para utilitários Tailwind. Fonte: pilha de sistema (sem CDN e sem requisição externa). Aliases legados (`brand-*`, `surface`, `ink`, `line`, `danger-*`) existem só até as telas serem migradas (#53 a #55).
+- **Acessibilidade:** `lib/ui/contrast.spec.ts` lê os tokens de `globals.css` e falha se algum par cair abaixo de AA (4,5:1 texto; 3:1 componentes e foco). Foco visível global, `prefers-reduced-motion` respeitado, link "Pular para o conteúdo", `lang="pt-BR"`, safe-area no cabeçalho e no conteúdo.
+- **Decisões:** `Select` continua `<select>` nativo estilizado (teclado e seletor móvel gratuitos); abas do grupo são links (`NavTabs`, server component, `?tab=` e `aria-current="page"`); tema escuro adiado (follow-up: sobrescrever os tokens de `:root` em `prefers-color-scheme: dark` e estender o teste de contraste).
+
 ## 8. Estrutura do repositório
 
 ```

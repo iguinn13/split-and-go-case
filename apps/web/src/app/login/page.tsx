@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Entrar | Split&Go' };
 export default function LoginPage() {
   return (
     <div className="mx-auto w-full max-w-md">
-      <Card title="Entrar">
+      <Card title="Entrar" as="h1">
         <AuthForm mode="login" />
       </Card>
     </div>
