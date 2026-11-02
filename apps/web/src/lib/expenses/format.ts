@@ -21,15 +21,16 @@ export function expensesHref(groupId: string, page = 1): string {
 
 /**
  * "US$ 100,00 · taxa 5,4325 · R$ 543,25" line shown for foreign-currency amounts (RF-UI-12).
- * The converted part is omitted when `convertedMinor` is null (not known to the caller).
+ * `convertedMinor` is the expense's persisted total in the group's base currency.
  */
 export function conversionLine(
   original: { currency: string; amountMinor: number; exchangeRate: string },
-  convertedMinor: number | null,
+  convertedMinor: number,
   baseCurrency: string,
 ): string {
-  const head = `${formatMoney(original.amountMinor, original.currency)} · taxa ${displayRate(
-    original.exchangeRate,
-  )}`;
-  return convertedMinor === null ? head : `${head} · ${formatMoney(convertedMinor, baseCurrency)}`;
+  return [
+    formatMoney(original.amountMinor, original.currency),
+    `taxa ${displayRate(original.exchangeRate)}`,
+    formatMoney(convertedMinor, baseCurrency),
+  ].join(' · ');
 }

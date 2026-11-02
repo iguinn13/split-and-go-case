@@ -3,7 +3,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
-import type { Group, GroupSummary } from '@/lib/groups/types';
+import type { GroupSummary } from '@/lib/groups/types';
 
 export const metadata = { title: 'Seus grupos | Split&Go' };
 
@@ -16,29 +16,10 @@ const createLink = (
   </Link>
 );
 
-/**
- * The list endpoint (GroupSummary) has no base currency, so it is read from each group.
- * A failed detail fetch only hides that group's currency instead of breaking the list.
- */
-async function loadGroups() {
-  const summaries = await serverApi<GroupSummary[]>('/groups');
-  return Promise.all(
-    summaries.map(async (summary) => {
-      const currency = await serverApi<Group>(`/groups/${summary.id}`)
-        .then((g) => g.baseCurrency)
-        .catch((error: unknown) => {
-          if (error instanceof ApiError) return null;
-          throw error;
-        });
-      return { ...summary, baseCurrency: currency };
-    }),
-  );
-}
-
 export default async function GroupsPage() {
-  let groups: Awaited<ReturnType<typeof loadGroups>>;
+  let groups: GroupSummary[];
   try {
-    groups = await loadGroups();
+    groups = await serverApi<GroupSummary[]>('/groups');
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     return (
@@ -85,8 +66,8 @@ export default async function GroupsPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {group.baseCurrency ? `Moeda: ${group.baseCurrency} · ` : ''}
-                  {group.memberCount} {group.memberCount === 1 ? 'participante' : 'participantes'}
+                  Moeda: {group.baseCurrency} · {group.memberCount}{' '}
+                  {group.memberCount === 1 ? 'participante' : 'participantes'}
                 </p>
               </Link>
             </li>

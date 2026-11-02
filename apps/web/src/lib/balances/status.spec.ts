@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conversionLine } from '@/lib/expenses/format';
-import { balanceStatus, lineConvertedMinor, magnitude, statementHref } from './status';
+import { balanceStatus, magnitude, statementHref } from './status';
 
 describe('balanceStatus', () => {
   it('maps a positive balance to + / recebe / emerald', () => {
@@ -52,21 +52,14 @@ describe('conversionLine', () => {
   });
 });
 
-describe('conversionLine without converted amount', () => {
-  it('omits the converted part', () => {
+describe('conversionLine for zero-decimal currencies', () => {
+  it('formats JPY without decimals and a non-payer line with the persisted converted total', () => {
     const text = conversionLine(
       { currency: 'JPY', amountMinor: 5000, exchangeRate: '0.0350' },
-      null,
+      17500,
       'BRL',
     );
-    expect(text).toContain('taxa 0,035');
-    expect(text.split(' · ')).toHaveLength(2);
-  });
-});
-
-describe('lineConvertedMinor', () => {
-  it('returns the converted total only when the member paid it', () => {
-    expect(lineConvertedMinor({ paidMinor: 162975 })).toBe(162975);
-    expect(lineConvertedMinor({ paidMinor: 0 })).toBeNull();
+    expect(text.split(' · ')).toHaveLength(3);
+    expect(text).toMatch(/^JP¥\s?5\.000 · taxa 0,035 · R\$\s?175,00$/);
   });
 });
