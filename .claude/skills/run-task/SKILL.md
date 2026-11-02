@@ -14,7 +14,7 @@ Board helper: `scripts/board/board.sh` (statuses: `Backlog`, `In Progress`, `In 
 1. `$ARGUMENTS` must be a single issue number. If it is not, stop and ask for one.
 2. Run `gh issue view $ARGUMENTS --json number,title,state,labels,body`. The issue must be open and have an area label (`backend`, `frontend`, `infra` or `docs`).
 3. Run `scripts/board/board.sh get-status $ARGUMENTS`. If it is not `Backlog` (or `In Progress` when resuming), tell the user and stop.
-4. Read the `Depends on` line in the issue body. For every referenced issue, `board.sh get-status <n>` must be `Done`. If not, stop and list what is blocking.
+4. Read the `Depende de` line in the issue body. For every referenced issue, `board.sh get-status <n>` must be `Done`. If not, stop and list what is blocking.
 5. Make sure the working tree is clean and `main` is up to date (`git status --porcelain`, `git pull --ff-only`). If not, stop and ask.
 
 ## 1. Start
@@ -32,7 +32,7 @@ Pick the agent from the area label:
 | `infra` | `backend-developer` (use `frontend-developer` if the issue only touches `apps/web`) |
 | `docs` | `backend-developer` |
 
-Launch it with the Agent tool. The prompt must contain: the repository (`gh repo view --json nameWithOwner`), the issue number and title, and the instruction to implement the acceptance criteria, open the PR with `Closes #$ARGUMENTS`, and report the PR URL. Pass nothing else; the agent reads the issue and the docs by itself.
+Launch it with the Agent tool. The prompt must contain: the repository (`gh repo view --json nameWithOwner`), the issue number and title, the value of the `Título do PR` field from the issue body (it is the PR title and drives the branch name), and the instruction to implement the acceptance criteria, open the PR with `Closes #$ARGUMENTS`, and report the PR URL. The issue itself is written in Portuguese; code, commits and PR stay in English. Pass nothing else; the agent reads the issue and the docs by itself.
 
 When it returns:
 - No PR URL, failing checks it could not fix, or open questions: keep the status `In Progress`, report to the user and stop.
@@ -56,7 +56,7 @@ Launch the `code-reviewer` agent with the issue number and the PR number. It ret
 ### If APPROVED
 
 1. Confirm CI is green when the repository has workflows: `gh pr checks <pr>`. If checks fail, treat it as CHANGES_REQUESTED.
-2. Merge with squash and delete the branch: `gh pr merge <pr> --squash --delete-branch`. The squash title is the PR title (Conventional Commit).
+2. Merge with squash and delete the branch: `gh pr merge <pr> --squash --delete-branch`. The squash title is the PR title (Conventional Commit, from `Título do PR`).
 3. Update local `main`: `git checkout main && git pull --ff-only`.
 4. Run `scripts/board/board.sh set-status $ARGUMENTS "Done"`.
 

@@ -1,13 +1,14 @@
 ---
 name: Task
-about: User story or technical task with acceptance criteria
-title: "type(scope): short description"
+about: História de usuário ou task técnica com critérios de aceite (em português)
+title: "Título da task em português"
 labels: ""
 ---
 
-- **Area:** backend | frontend | infra | docs
+- **Área:** backend | frontend | infra | docs
+- **Título do PR:** `type(scope): short description in english`
 - **Spec:** `docs/specs/...`
-- **Depends on:** #
+- **Depende de:** #
 
 **História:** Como <persona>, quero <objetivo> para <benefício>.
 

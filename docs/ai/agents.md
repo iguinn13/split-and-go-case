@@ -21,7 +21,7 @@ A label de área da issue define quem executa:
 
 ## Contrato entre agentes e orquestrador
 
-- **Desenvolvedor recebe:** número da issue. Lê a issue e a documentação por conta própria.
+- **Desenvolvedor recebe:** número da issue (escrita em português) e o `Título do PR`. Lê a issue e a documentação por conta própria; código, commits e título do PR ficam em inglês.
 - **Desenvolvedor entrega:** branch com commits semânticos (`Refs #n`), PR com `Closes #n`, relatório com a evidência de cada critério.
 - **Desenvolvedor não faz:** merge, mudança de status no board, escopo além dos critérios da issue.
 - **Revisor recebe:** número da issue e do PR.

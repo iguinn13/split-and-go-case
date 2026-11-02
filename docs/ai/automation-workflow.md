@@ -52,9 +52,9 @@ sequenceDiagram
 ## Passo a passo
 
 1. **Especificação da tarefa.** O mantenedor escolhe a issue (já com critérios de aceite) e roda `/run-task <n>`.
-2. **Pré-condições.** O orquestrador confirma que a issue está em Backlog, que as dependências (`Depends on`) estão em Done e que a árvore de trabalho está limpa.
+2. **Pré-condições.** O orquestrador confirma que a issue está em Backlog, que as dependências (`Depende de`) estão em Done e que a árvore de trabalho está limpa.
 3. **In Progress.** `scripts/board/board.sh set-status <n> "In Progress"`.
-4. **Desenvolvimento.** O agente certo (por label) lê a issue e a documentação, cria a branch `<tipo>/<n>-<slug>`, implementa, escreve testes, roda lint/typecheck/testes/build e abre o PR com `Closes #<n>`.
+4. **Desenvolvimento.** O agente certo (por label) lê a issue e a documentação, cria a branch `<tipo>/<n>-<slug>` (a partir do campo `Título do PR` da issue), implementa, escreve testes, roda lint/typecheck/testes/build e abre o PR com `Closes #<n>`.
 5. **In Review/Testing.** O orquestrador move o card.
 6. **Revisão.** O `code-reviewer` executa as verificações e confere cada critério de aceite com evidência.
 7. **Resultado.**

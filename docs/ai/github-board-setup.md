@@ -30,7 +30,7 @@ scripts/board/setup-board.sh
 scripts/board/create-issues.sh
 ```
 
-Ambos os scripts localizam o projeto pelo título (`Split and Go Case`) e são seguros para repetir: `create-issues.sh` ignora tasks cujo título já existe como issue.
+As issues são criadas em português, exatamente como no backlog. Ambos os scripts localizam o projeto pelo título (`Split and Go Case`) e são seguros para repetir: `create-issues.sh` ignora tasks cujo título já existe como issue.
 
 > Rode o `setup-board.sh` **antes** de adicionar itens: trocar as opções do campo Status gera novos identificadores.
 
@@ -48,7 +48,7 @@ Em geral esses comandos são executados pela skill `/run-task` (ver `automation-
 
 ## Criar novas tasks
 
-1. Adicione a seção `### T-NN · tipo(escopo): descrição` em `docs/tasks/backlog.md` com `Area`, `Spec`, `Depends on`, história e critérios de aceite.
+1. Adicione a seção `### T-NN · Título em português` em `docs/tasks/backlog.md` com `Área`, `Título do PR` (inglês, Conventional Commits), `Spec`, `Depende de`, história e critérios de aceite, **todos em português**.
 2. Rode `scripts/board/create-issues.sh`.
 
 Mantenha o número da task igual ao número da issue; o script avisa quando divergem.

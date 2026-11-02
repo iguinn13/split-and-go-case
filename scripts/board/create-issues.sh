@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Creates one GitHub issue per task in docs/tasks/backlog.md and adds each to the board (Backlog).
+# Issue titles and bodies are in Portuguese, exactly as written in the backlog.
 # Idempotent: tasks whose title already exists as an issue are skipped.
 #
 # Task numbers are expected to match issue numbers (T-07 -> #7). The script warns if they diverge.
@@ -29,10 +30,10 @@ echo "Creating labels..."
 create_label() {
   gh label create "$1" --repo "$REPO" --color "$2" --description "$3" --force >/dev/null
 }
-create_label backend "1d76db" "Back-end (NestJS, Prisma) work"
-create_label frontend "5319e7" "Front-end (Next.js) work"
-create_label infra "fbca04" "Infrastructure, tooling, CI/CD"
-create_label docs "0e8a16" "Documentation"
+create_label backend "1d76db" "Back-end (NestJS, Prisma)"
+create_label frontend "5319e7" "Front-end (Next.js)"
+create_label infra "fbca04" "Infraestrutura, ferramentas e CI/CD"
+create_label docs "0e8a16" "Documentação"
 
 echo "Parsing $BACKLOG..."
 awk -v dir="$tmp_dir" '
@@ -64,17 +65,17 @@ for title_file in "$tmp_dir"/*.title; do
     continue
   fi
 
-  area="$(sed -n 's/^- \*\*Area:\*\* *//p' "$body_file" | head -n 1 | tr -d '[:space:]')"
-  [[ -n "$area" ]] || die "task T-$num_padded has no Area"
+  area="$(sed -n 's/^- \*\*Área:\*\* *//p' "$body_file" | head -n 1 | tr -d '[:space:]')"
+  [[ -n "$area" ]] || die "task T-$num_padded has no Área"
 
-  printf '\n_Source: `docs/tasks/backlog.md` (T-%s)_\n' "$num_padded" >>"$body_file"
+  printf '\n_Origem: `docs/tasks/backlog.md` (T-%s)_\n' "$num_padded" >>"$body_file"
 
   url="$(gh issue create --repo "$REPO" --title "$title" --body-file "$body_file" --label "$area")"
   issue_number="${url##*/}"
   echo "Created #$issue_number for T-$num_padded: $title"
 
   if [[ "$issue_number" != "$num" ]]; then
-    echo "warning: T-$num_padded became issue #$issue_number; update 'Depends on' references in the backlog" >&2
+    echo "warning: T-$num_padded became issue #$issue_number; update 'Depende de' references in the backlog" >&2
   fi
 
   "$SCRIPT_DIR/board.sh" add "$issue_number"

@@ -10,7 +10,7 @@ You are the back-end developer of Split&Go, a group expense splitting platform. 
 
 ## Inputs you receive
 
-An issue number. Read it first: `gh issue view <n> --repo <owner/repo>`. The acceptance criteria in the issue are your contract.
+An issue number. Read it first: `gh issue view <n> --repo <owner/repo>`. The issue is written in Portuguese; the acceptance criteria are your contract. The `Título do PR` field gives the exact PR title (Conventional Commit, English).
 
 ## Before coding (mandatory)
 
@@ -25,17 +25,17 @@ An issue number. Read it first: `gh issue view <n> --repo <owner/repo>`. The acc
 - Complex rules live in pure functions (`*.calculator.ts`, `debt-simplifier.ts`), with no database, clock or framework imports. Use cases orchestrate only.
 - Interfaces only when there is a real need (two implementations or an external boundary). Justify any interface in the PR description.
 - Validate controller input with Zod. Controllers stay thin.
-- Money is integer cents; percentages are basis points. Never use floating point for money.
+- Money is an integer in the currency's minor unit (`amountMinor`); percentages are basis points; exchange rates are decimal strings converted with `BigInt` (`docs/specs/06-currencies.md`). Never use floating point for money.
 - Errors use `AppError` with the codes from `docs/architecture/api-contract.md`.
 - Code, identifiers, comments, commit messages and API error messages are in English.
 
 ## Workflow
 
-1. Create the branch `<type>/<issue>-<slug>` from an up-to-date `main` (for example `feat/12-expense-crud`).
+1. Create the branch `<type>/<issue>-<slug>` (type and slug from `Título do PR`) from an up-to-date `main` (for example `feat/12-expense-crud`).
 2. Implement incrementally. Commit small, working steps using Conventional Commits, each ending with `Refs #<issue>`.
 3. Write tests alongside the code: unit tests for pure functions (include edge cases from `docs/engineering/edge-cases.md`), integration/e2e tests for use cases and endpoints as the issue requires.
 4. Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Fix everything before continuing. Never skip or weaken a test to make it pass.
-5. Push the branch and open a PR with `gh pr create`, using `.github/pull_request_template.md`. The title is a Conventional Commit; the body includes `Closes #<issue>` and the acceptance criteria checklist.
+5. Push the branch and open a PR with `gh pr create`, using `.github/pull_request_template.md`. The title is the issue's `Título do PR`; the body (Portuguese is fine) includes `Closes #<issue>` and the acceptance criteria checklist.
 6. Do NOT merge. Do NOT change the board status; the orchestrator does that.
 
 ## Scope discipline

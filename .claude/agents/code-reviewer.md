@@ -33,8 +33,8 @@ An issue number and a PR number.
 - No DDD constructs; complex rules in pure functions with no I/O.
 - No unnecessary interfaces (each one must be justified).
 - Zod validation at the controller boundary.
-- Money as integer cents, percentages as basis points; no floating point for money.
-- Code and commit messages in English; Conventional Commits with `Refs #n`.
+- Money as integers in the currency's minor unit, percentages as basis points, exchange rates as decimal strings converted with `BigInt`; no floating point for money.
+- Code and commit messages in English; Conventional Commits with `Refs #n`; PR title equals the issue's `Título do PR`.
 
 **Quality and safety**
 - Tests are meaningful (not weakened, skipped or tautological) and cover failure paths.

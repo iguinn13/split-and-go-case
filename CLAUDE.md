@@ -12,10 +12,10 @@ Plataforma de gestão e rateio de despesas em grupo, com liquidação em número
 
 ## Regras essenciais
 
-- **Idioma:** código, nomes de arquivo, commits, branches, PRs e títulos de issues em **inglês**. Documentação em **português (pt-BR)** com nomes de arquivo em inglês. Textos da interface em pt-BR.
+- **Idioma:** código, nomes de arquivo, commits, branches e títulos de PR em **inglês**. Documentação **e issues/cards do board** (título, história, critérios) em **português (pt-BR)**, com nomes de arquivo em inglês. Textos da interface em pt-BR.
 - **Arquitetura:** monolito modular em camadas por domínio: `Controller → Use Case → Repository/Service`. **Sem DDD.** Interfaces **somente** com necessidade real (justifique no PR).
 - **Regras complexas** (rateio, saldo, simplificação) em funções puras sem I/O (`*.calculator.ts`, `debt-simplifier.ts`). Use cases só orquestram.
-- **Dinheiro:** inteiros em centavos (`amountCents`); porcentagem em basis points. Nunca ponto flutuante. Somente BRL no MVP.
+- **Dinheiro:** inteiros na menor unidade da moeda (`amountMinor`); porcentagem em basis points; taxa de câmbio em texto decimal e conversão com `BigInt`. Nunca ponto flutuante. **Multi-moeda no MVP:** moeda-base por grupo e snapshot de taxa por despesa (`docs/specs/06-currencies.md`).
 - **Validação:** Zod nos controllers. Erros no contrato de `docs/architecture/api-contract.md`.
 - **Stack:** NestJS (LTS), TypeScript estrito, Prisma, PostgreSQL, Zod, Next.js, Docker Compose, ESLint + Prettier, pnpm.
 - **Qualidade:** lint, typecheck, testes e build verdes antes de abrir PR. Nunca enfraquecer testes para passar.
@@ -24,7 +24,7 @@ Plataforma de gestão e rateio de despesas em grupo, com liquidação em número
 ## Git
 
 - Conventional Commits com escopo e referência: `feat(expenses): add percentage split calculator` + rodapé `Refs #12`.
-- Branch: `<type>/<issue>-<slug>`. PR com `Closes #<issue>`, título em Conventional Commit, merge por squash.
+- Branch: `<type>/<issue>-<slug>`. PR com `Closes #<issue>`, título = campo `Título do PR` da issue (Conventional Commit em inglês), merge por squash.
 - Detalhes em `docs/engineering/git-workflow.md`.
 
 ## Board e automação
