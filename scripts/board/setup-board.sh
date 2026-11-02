@@ -60,4 +60,6 @@ JSON
 
 gh api graphql --input "$payload" --jq '.data.updateProjectV2Field.projectV2Field.options[].name'
 
+"$(dirname "${BASH_SOURCE[0]}")/board.sh" clear-cache >/dev/null 2>&1 || true
+
 echo "Board ready: $(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .url)"

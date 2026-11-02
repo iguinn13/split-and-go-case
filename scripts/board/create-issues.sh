@@ -21,7 +21,17 @@ die() {
 command -v gh >/dev/null 2>&1 || die "gh CLI not found"
 [[ -f "$BACKLOG" ]] || die "backlog not found at $BACKLOG"
 
-REPO="${BOARD_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+repo_from_git_remote() {
+  local url
+  url="$(git remote get-url origin 2>/dev/null)" || return 1
+  url="${url%.git}"
+  url="${url#git@github.com:}"
+  url="${url#https://github.com/}"
+  [[ "$url" == */* ]] || return 1
+  printf '%s' "$url"
+}
+
+REPO="${BOARD_REPO:-$(repo_from_git_remote || gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -51,7 +61,9 @@ awk -v dir="$tmp_dir" '
   body != "" { print > body }
 ' "$BACKLOG"
 
-existing_titles="$(gh issue list --repo "$REPO" --state all --limit 500 --json title --jq '.[].title')"
+# One call: "<number><TAB><title>" for every existing issue.
+existing_issues="$(gh issue list --repo "$REPO" --state all --limit 500 --json number,title \
+  --jq '.[] | [(.number | tostring), .title] | @tsv')"
 
 shopt -s nullglob
 for title_file in "$tmp_dir"/*.title; do
@@ -60,8 +72,10 @@ for title_file in "$tmp_dir"/*.title; do
   title="$(cat "$title_file")"
   body_file="$tmp_dir/$num_padded.md"
 
-  if grep -Fxq -- "$title" <<<"$existing_titles"; then
-    echo "T-$num_padded already exists, skipping: $title"
+  existing_number="$(awk -F'\t' -v t="$title" '$2 == t { print $1; exit }' <<<"$existing_issues")"
+  if [[ -n "$existing_number" ]]; then
+    echo "T-$num_padded already exists as #$existing_number, ensuring it is on the board"
+    "$SCRIPT_DIR/board.sh" add "$existing_number"
     continue
   fi
 
@@ -79,6 +93,7 @@ for title_file in "$tmp_dir"/*.title; do
   fi
 
   "$SCRIPT_DIR/board.sh" add "$issue_number"
+  sleep 2 # avoid GitHub secondary rate limits
 done
 
 echo "Done."
