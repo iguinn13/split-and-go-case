@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { CreateGroupForm } from '@/components/groups/create-group-form';
+import { buttonVariants } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
 import type { CurrencyOption } from '@/lib/groups/types';
@@ -18,7 +20,7 @@ export default async function NewGroupPage() {
         title="Não foi possível carregar as moedas"
         message={errorMessage(error.code)}
         action={
-          <Link href="/groups/new" className="font-semibold underline">
+          <Link href="/groups/new" className={buttonVariants({ variant: 'secondary' })}>
             Tentar novamente
           </Link>
         }
@@ -27,7 +29,12 @@ export default async function NewGroupPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Novo grupo</h1>
+      <PageHeader
+        title="Novo grupo"
+        backHref="/groups"
+        backLabel="Voltar aos grupos"
+        description="Defina o nome, a moeda e quem participa. Você entra como dono."
+      />
       <CreateGroupForm currencies={currencies} />
     </div>
   );

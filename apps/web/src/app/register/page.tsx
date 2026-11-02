@@ -1,15 +1,16 @@
 import type { Metadata } from 'next';
+import { AuthCard } from '@/components/auth/auth-card';
 import { AuthForm } from '@/components/auth/auth-form';
-import { Card } from '@/components/ui/card';
 
 export const metadata: Metadata = { title: 'Cadastro | Split&Go' };
 
 export default function RegisterPage() {
   return (
-    <div className="mx-auto w-full max-w-md">
-      <Card title="Criar conta" as="h1">
-        <AuthForm mode="register" />
-      </Card>
-    </div>
+    <AuthCard
+      title="Criar conta"
+      subtitle="Leva menos de um minuto. Depois é só criar um grupo e dividir."
+    >
+      <AuthForm mode="register" />
+    </AuthCard>
   );
 }

@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
+import { AuthCard } from '@/components/auth/auth-card';
 import { AuthForm } from '@/components/auth/auth-form';
-import { Card } from '@/components/ui/card';
 
 export const metadata: Metadata = { title: 'Entrar | Split&Go' };
 
 export default function LoginPage() {
   return (
-    <div className="mx-auto w-full max-w-md">
-      <Card title="Entrar" as="h1">
-        <AuthForm mode="login" />
-      </Card>
-    </div>
+    <AuthCard title="Entrar" subtitle="Acesse seus grupos e acompanhe quem deve a quem.">
+      <AuthForm mode="login" />
+    </AuthCard>
   );
 }

@@ -2,6 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { Crown, Trash2, UserPlus } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mutate } from '@/lib/groups/client';
@@ -26,6 +30,11 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [touched, setTouched] = useState({ name: false, email: false });
+  const touch = (field: 'name' | 'email') => setTouched((c) => ({ ...c, [field]: true }));
+  // Live validation: show a field's error once it was left (blur) or after a submit attempt.
+  const fieldError = (field: 'name' | 'email') =>
+    submitted || touched[field] ? errors[field] : undefined;
 
   const result = buildAddMemberSchema(members).safeParse({ name, email });
   const errors = result.success ? {} : pathErrors(result.error);
@@ -49,6 +58,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
     setName('');
     setEmail('');
     setSubmitted(false);
+    setTouched({ name: false, email: false });
     router.refresh();
   }
 
@@ -61,7 +71,11 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
     });
     setRemovingId(null);
     if (!response.ok) {
-      setMessage(response.message);
+      setMessage(
+        response.code === 'MEMBER_HAS_EXPENSES'
+          ? `${member.name} não pode ser removido porque já participa de despesas. Edite ou exclua essas despesas e tente de novo.`
+          : response.message,
+      );
       return;
     }
     router.refresh();
@@ -69,14 +83,7 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
 
   return (
     <div className="flex flex-col gap-4">
-      {message ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-danger-700 bg-danger-50 px-3 py-2 text-sm text-danger-700"
-        >
-          Erro: {message}
-        </div>
-      ) : null}
+      {message ? <Alert>{message}</Alert> : null}
 
       <ul className="flex flex-col gap-2" aria-label="Participantes do grupo">
         {members.map((member) => {
@@ -84,15 +91,17 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
           return (
             <li
               key={member.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface p-3"
+              className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
             >
-              <div className="min-w-0">
-                <p className="break-words font-medium">
-                  {member.name}
+              <Avatar name={member.name} decorative />
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                  <span className="min-w-0 break-words">{member.name}</span>
                   {isGroupOwner ? (
-                    <span className="ml-2 rounded bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                    <Badge variant="success">
+                      <Crown aria-hidden />
                       Dono
-                    </span>
+                    </Badge>
                   ) : null}
                 </p>
                 <p className="break-all text-sm text-muted-foreground">
@@ -102,7 +111,10 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
               {canEdit && !isGroupOwner ? (
                 <Button
                   variant="secondary"
+                  size="sm"
+                  icon={<Trash2 aria-hidden />}
                   disabled={removingId !== null}
+                  loading={removingId === member.id}
                   onClick={() => void onRemove(member)}
                   aria-label={`Remover ${member.name}`}
                 >
@@ -119,15 +131,16 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
           onSubmit={(event) => void onAdd(event)}
           noValidate
           aria-busy={adding}
-          className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
         >
-          <h2 className="font-semibold">Adicionar participante</h2>
+          <h2 className="text-heading font-semibold">Adicionar participante</h2>
           <Input
             id="member-name"
             label="Nome"
             value={name}
-            error={submitted ? errors['name'] : undefined}
+            error={fieldError('name')}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => touch('name')}
             autoComplete="off"
             maxLength={60}
           />
@@ -137,11 +150,17 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
             type="email"
             inputMode="email"
             value={email}
-            error={submitted ? errors['email'] : undefined}
+            error={fieldError('email')}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => touch('email')}
             autoComplete="off"
           />
-          <Button type="submit" disabled={adding} className="self-start">
+          <Button
+            type="submit"
+            loading={adding}
+            icon={<UserPlus aria-hidden />}
+            className="self-start"
+          >
             {adding ? 'Adicionando...' : 'Adicionar'}
           </Button>
         </form>
