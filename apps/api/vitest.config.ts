@@ -15,6 +15,6 @@ export default defineConfig({
     },
     globalSetup: ['test/support/global-setup.ts'],
     setupFiles: ['test/support/no-network.setup.ts'],
-    include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+    include: ['src/**/*.spec.ts', 'test/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
   },
 });

@@ -68,3 +68,9 @@ Workflow `.github/workflows/ci.yml` (task #6): instala com pnpm (com cache), rod
 - O teste sobe o Docker Compose em um projeto isolado (`splitgo-e2e`, portas 13000/13001/15432; configurável por `E2E_*`) com o override `apps/web/e2e/docker-compose.e2e.yml`, que troca o provedor de câmbio por um stub local (`fx-stub`, compatível com Frankfurter). Ao final executa `down -v` apenas nesse projeto.
 - Os valores esperados são calculados no próprio teste com `BigInt` (`e2e/support/expected.ts`), sem importar o código da aplicação.
 - No CI, o job `E2E (Playwright)` sobe a stack, roda o teste e publica o relatório e os traces como artefato em caso de falha.
+
+## Banco de dados dos testes da API
+
+- `DATABASE_URL` é obrigatório para `pnpm test` na API (sem valor padrão). A regra de segurança está em um só lugar, `apps/api/test/support/test-database.ts`, usada por `vitest.config.ts` e pelo setup global: protocolo `postgres(ql)://`, host `localhost`, `127.0.0.1`, `::1`, `postgres` ou `db`, e nome de banco que não pareça produção (`prod`, `production`, `live`, `staging`, `main`). Caso contrário a execução aborta antes de qualquer `prisma migrate deploy`, com mensagem que não imprime credenciais.
+- Exemplo: `DATABASE_URL=postgresql://splitgo:splitgo@localhost:5432/splitgo_test pnpm test`. Na CI a variável já é definida no job `verify`.
+- Testes de provedor de câmbio usam servidor HTTP local (nunca internet); parser, cache e deduplicação têm testes unitários com timers falsos.
