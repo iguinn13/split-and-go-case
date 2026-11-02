@@ -71,6 +71,7 @@ export interface GroupSummaryView {
   id: string;
   name: string;
   status: 'OPEN' | 'CLOSED';
+  baseCurrency: string;
   memberCount: number;
   createdAt: Date;
 }

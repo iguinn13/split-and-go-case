@@ -22,6 +22,7 @@ export class GroupsRepository {
       select: {
         id: true,
         name: true,
+        baseCurrency: true,
         status: true,
         createdAt: true,
         _count: { select: { members: true } },

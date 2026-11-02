@@ -19,6 +19,8 @@ interface Fixture {
   ownerExpenseId: string;
   memberExpenseId: string;
   transferId: string | null;
+  /** Resources of ANOTHER group (owned by eve), never reachable through `groupId`. */
+  foreign: { groupId: string; expenseId: string; memberId: string; transferId: string | null };
 }
 interface Call {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -55,6 +57,18 @@ const readOnly = (outcome: Outcome = 200): Record<Role, Outcome> => ({
 const ownerOnly = (ok: number): Record<Role, Outcome> => ({
   owner: ok,
   member: FORBIDDEN,
+  stranger: NOT_FOUND,
+  anonymous: UNAUTHORIZED,
+});
+
+/**
+ * Cross-group IDOR: a resource of another group addressed through the URL of a group where the
+ * caller is owner/member must be a 404 of the resource, never a leak or a change.
+ * `ownerCheck` marks owner-only routes, where a linked non-owner is stopped earlier with 403.
+ */
+const foreignResource = (code: string, ownerCheck = false): Record<Role, Outcome> => ({
+  owner: [404, code],
+  member: ownerCheck ? FORBIDDEN : [404, code],
   stranger: NOT_FOUND,
   anonymous: UNAUTHORIZED,
 });
@@ -182,6 +196,48 @@ const ROWS: Row[] = [
     // Owner or linked member may mark a transfer as paid (RN-BAL-14).
     expected: readOnly(200),
   },
+  // Cross-group IDOR rows (resource of another group through this group's URL).
+  {
+    route: 'GET foreign expense through own group URL',
+    pattern: 'GET /groups/:groupId/expenses/:expenseId',
+    call: (f) => ({ method: 'get', url: `${g(f)}/expenses/${f.foreign.expenseId}` }),
+    expected: foreignResource('EXPENSE_NOT_FOUND'),
+  },
+  {
+    route: 'PUT foreign expense through own group URL',
+    pattern: 'PUT /groups/:groupId/expenses/:expenseId',
+    call: (f) => ({
+      method: 'put',
+      url: `${g(f)}/expenses/${f.foreign.expenseId}`,
+      body: expenseBody(f),
+    }),
+    expected: foreignResource('EXPENSE_NOT_FOUND'),
+  },
+  {
+    route: 'DELETE foreign expense through own group URL',
+    pattern: 'DELETE /groups/:groupId/expenses/:expenseId',
+    call: (f) => ({ method: 'delete', url: `${g(f)}/expenses/${f.foreign.expenseId}` }),
+    expected: foreignResource('EXPENSE_NOT_FOUND'),
+  },
+  {
+    route: 'DELETE foreign member through own group URL',
+    pattern: 'DELETE /groups/:groupId/members/:memberId',
+    call: (f) => ({ method: 'delete', url: `${g(f)}/members/${f.foreign.memberId}` }),
+    expected: foreignResource('MEMBER_NOT_FOUND', true),
+  },
+  {
+    route: 'GET statement of foreign member through own group URL',
+    pattern: 'GET /groups/:groupId/members/:memberId/statement',
+    call: (f) => ({ method: 'get', url: `${g(f)}/members/${f.foreign.memberId}/statement` }),
+    expected: foreignResource('MEMBER_NOT_FOUND'),
+  },
+  {
+    route: 'PATCH pay foreign transfer through own group URL',
+    pattern: 'PATCH /groups/:groupId/transfers/:transferId/pay',
+    closed: true,
+    call: (f) => ({ method: 'patch', url: `${g(f)}/transfers/${f.foreign.transferId}/pay` }),
+    expected: foreignResource('TRANSFER_NOT_FOUND'),
+  },
 ];
 
 describe('Authorization matrix over every group route (e2e)', () => {
@@ -236,20 +292,55 @@ describe('Authorization matrix over every group route (e2e)', () => {
       const plan = await h.as('ana').post(`/groups/${group.id}/close`).expect(200);
       transferId = (plan.body as { transfers: { id: string }[] }).transfers[0]!.id;
     }
-    return { groupId: group.id, ids, ownerExpenseId, memberExpenseId, transferId };
+    const foreign = await makeForeign(closed);
+    return { groupId: group.id, ids, ownerExpenseId, memberExpenseId, transferId, foreign };
+  }
+
+  /** A second group owned by eve, with an expense, an unlinked member and (if closed) a transfer. */
+  async function makeForeign(closed: boolean): Promise<Fixture['foreign']> {
+    const res = await h
+      .as('eve')
+      .post('/groups')
+      .send({ name: 'Foreign', members: [{ name: 'fox' }] })
+      .expect(201);
+    const group = res.body as { id: string; members: { id: string; name: string }[] };
+    const fox = group.members.find((m) => m.name === 'fox')!;
+    const eve = group.members.find((m) => m.name !== 'fox')!;
+    const created = await h
+      .as('eve')
+      .post(`/groups/${group.id}/expenses`)
+      .send({
+        description: 'Foreign expense',
+        originalAmountMinor: 2000,
+        paidByMemberId: eve.id,
+        occurredOn: '2026-07-10',
+        split: { type: 'EQUAL', participantIds: [eve.id, fox.id] },
+      })
+      .expect(201);
+    let transferId: string | null = null;
+    if (closed) {
+      const plan = await h.as('eve').post(`/groups/${group.id}/close`).expect(200);
+      transferId = (plan.body as { transfers: { id: string }[] }).transfers[0]!.id;
+    }
+    return {
+      groupId: group.id,
+      expenseId: (created.body as { id: string }).id,
+      memberId: fox.id,
+      transferId,
+    };
   }
 
   /** Everything a denied call must leave untouched. */
   async function snapshot(f: Fixture): Promise<unknown[]> {
-    return Promise.all(
-      ['', '/expenses', '/balances', '/settlement-plan'].map(async (path) => {
-        const res = await h
-          .as('ana')
-          .get(`${g(f)}${path}`)
-          .expect(200);
-        return res.body as unknown;
-      }),
-    );
+    const read = (user: string, groupId: string) =>
+      Promise.all(
+        ['', '/expenses', '/balances', '/settlement-plan'].map(async (path) => {
+          const res = await h.as(user).get(`/groups/${groupId}${path}`).expect(200);
+          return res.body as unknown;
+        }),
+      );
+    // The foreign group (owned by eve) must be untouched by calls through the other group.
+    return [...(await read('ana', f.groupId)), ...(await read('eve', f.foreign.groupId))];
   }
 
   const cases = ROWS.flatMap((row) =>
