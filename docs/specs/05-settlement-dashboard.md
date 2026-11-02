@@ -6,7 +6,7 @@ O painel é a tela em que o grupo enxerga **quem deve a quem** e conclui o acert
 
 ## Princípios de UX
 
-1. **Clareza antes de tudo:** valores sempre em `R$ 1.234,56`, com cor e rótulo textual (nunca só cor) para quem recebe (`+`, verde) e quem deve (`−`, vermelho).
+1. **Clareza antes de tudo:** valores formatados na moeda correta (`R$ 1.234,56`, `US$ 100.00`, `¥ 5.000`), com cor e rótulo textual (nunca só cor) para quem recebe (`+`, verde) e quem deve (`−`, vermelho).
 2. **Mobile first:** todas as telas funcionam bem em 360 px de largura.
 3. **Feedback imediato:** estados de carregamento, vazio e erro em todas as telas; mensagens de erro em português claro.
 4. **Prevenção de erro:** o formulário de despesa mostra, antes de salvar, a prévia das partes calculadas e a diferença restante (porcentagem e valor fixo).
@@ -18,9 +18,9 @@ O painel é a tela em que o grupo enxerga **quem deve a quem** e conclui o acert
 |---|---|---|
 | Cadastro / Login | `/register`, `/login` | Formulários com validação em tempo real. |
 | Meus grupos | `/groups` | Lista de grupos (nome, status, nº de participantes), botão "Novo grupo". |
-| Novo grupo | `/groups/new` | Nome, descrição e lista dinâmica de participantes (nome, e-mail opcional). |
+| Novo grupo | `/groups/new` | Nome, descrição, **moeda-base** (padrão BRL) e lista dinâmica de participantes (nome, e-mail opcional). |
 | Detalhe do grupo | `/groups/[id]` | Abas: **Despesas**, **Saldos**, **Participantes**, **Quitação**. |
-| Nova/editar despesa | modal ou `/groups/[id]/expenses/new` | Descrição, valor, pagador, data, tipo de rateio, participantes e prévia. |
+| Nova/editar despesa | modal ou `/groups/[id]/expenses/new` | Descrição, **moeda**, valor, **taxa de câmbio**, pagador, data, tipo de rateio, participantes e prévia. |
 | Extrato do participante | `/groups/[id]/members/[memberId]` | Linhas despesa a despesa com saldo acumulado. |
 | Painel de quitação | aba **Quitação** | Resumo, plano de liquidação e botão "Fechar grupo". |
 
@@ -36,6 +36,10 @@ O painel é a tela em que o grupo enxerga **quem deve a quem** e conclui o acert
 | RF-UI-06 | Em grupo `CLOSED`, ações de edição (despesas, participantes) ficam ocultas ou desabilitadas e um aviso informa que o grupo está fechado. |
 | RF-UI-07 | O formulário de despesa tem os três modos de rateio, com prévia das partes e validação visual da soma (100% ou total). |
 | RF-UI-08 | Erros da API são traduzidos para mensagens amigáveis a partir do código de erro (`code`). |
+| RF-UI-09 | O formulário de despesa tem seletor de **moeda** (padrão: moeda-base). Ao escolher outra moeda, aparece o campo **taxa**, pré-preenchido com a sugestão do dia da despesa (`GET /exchange-rates`) e editável, e a prévia mostra o valor convertido ("≈ R$ 543,25"). |
+| RF-UI-10 | O campo de valor respeita as casas decimais da moeda (JPY e KRW sem decimais). |
+| RF-UI-11 | Se a sugestão de taxa falhar, a interface avisa ("Não foi possível buscar a taxa. Informe manualmente.") e o formulário continua utilizável. |
+| RF-UI-12 | A lista e o extrato mostram, em despesas em moeda estrangeira, o valor original, a taxa e o valor convertido (ex.: "US$ 100,00 · taxa 5,4325 · R$ 543,25"). |
 
 ## Critérios de aceite
 
@@ -74,3 +78,21 @@ O painel é a tela em que o grupo enxerga **quem deve a quem** e conclui o acert
 ### AC-UI-08 — Responsividade
 - **Quando** acesso qualquer tela com 360 px de largura
 - **Então** não há rolagem horizontal e todos os controles são utilizáveis.
+
+### AC-UI-09 — Despesa em moeda estrangeira
+- **Dado** um grupo em BRL
+- **Quando** escolho USD no formulário e informo US$ 100,00
+- **Então** vejo a taxa sugerida (editável), a prévia "≈ R$ 543,25" e a prévia das partes em reais; ao salvar, a despesa aparece na lista com valor original, taxa e valor convertido.
+
+### AC-UI-10 — Moeda sem casas decimais
+- **Quando** escolho JPY
+- **Então** o campo de valor não aceita casas decimais e exibe `¥ 5.000`.
+
+### AC-UI-11 — Falha na sugestão de taxa
+- **Dado** que o provedor de câmbio está indisponível
+- **Quando** escolho uma moeda estrangeira
+- **Então** vejo o aviso de indisponibilidade e consigo digitar a taxa e salvar a despesa normalmente.
+
+### AC-UI-12 — Moeda-base na criação do grupo
+- **Quando** crio um grupo escolhendo USD como moeda-base
+- **Então** saldos, extratos e plano de liquidação aparecem em dólares.

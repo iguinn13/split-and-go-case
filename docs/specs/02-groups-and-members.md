@@ -14,7 +14,7 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 
 | ID | Requisito |
 |---|---|
-| RF-GRP-01 | `POST /groups` cria um grupo com `name`, `description` opcional e `members[]`. |
+| RF-GRP-01 | `POST /groups` cria um grupo com `name`, `baseCurrency` (opcional, padrão `BRL`), `description` opcional e `members[]`. |
 | RF-GRP-02 | O criador vira dono e é incluído automaticamente como participante vinculado ao seu usuário. |
 | RF-GRP-03 | `GET /groups` lista os grupos em que o usuário é dono ou participante vinculado. |
 | RF-GRP-04 | `GET /groups/:id` retorna o grupo, seus participantes e seu status. |
@@ -26,7 +26,7 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 
 | ID | Regra |
 |---|---|
-| RN-GRP-01 | `name` do grupo: 2 a 80 caracteres. `currency` é sempre `BRL`. |
+| RN-GRP-01 | `name` do grupo: 2 a 80 caracteres. `baseCurrency` deve ser uma moeda suportada (`06-currencies.md`), padrão `BRL`, e **não pode ser alterada** depois da criação. |
 | RN-GRP-02 | Um grupo precisa de no mínimo **2** participantes (incluindo o criador) para registrar despesas. A criação aceita 1 participante (só o criador) e permite completar depois. |
 | RN-GRP-03 | Nome do participante: 1 a 60 caracteres, único dentro do grupo (comparação sem diferenciar maiúsculas). |
 | RN-GRP-04 | E-mail do participante é opcional, normalizado e único dentro do grupo quando informado. |
@@ -42,7 +42,7 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 ### AC-GRP-01 — Criar grupo com vários participantes
 - **Dado** um usuário autenticado
 - **Quando** envio `POST /groups` com nome "Viagem Floripa" e participantes "Bia", "Caio" e "Duda"
-- **Então** recebo `201` com o grupo `OPEN` e 4 participantes (o criador e os 3 informados), `currency = BRL`.
+- **Então** recebo `201` com o grupo `OPEN` e 4 participantes (o criador e os 3 informados), `baseCurrency = BRL`.
 
 ### AC-GRP-02 — Validação de participantes
 - **Quando** envio dois participantes com o mesmo nome (ou o mesmo e-mail) no mesmo grupo
@@ -81,3 +81,8 @@ Um grupo reúne os participantes que dividem despesas. O usuário que cria o gru
 - **Dado** um grupo `CLOSED`
 - **Quando** tento adicionar ou remover participantes
 - **Então** recebo `409 GROUP_CLOSED`.
+
+### AC-GRP-10 — Moeda-base do grupo
+- **Quando** crio um grupo com `baseCurrency = "USD"`
+- **Então** o grupo é criado em USD e todos os saldos e o plano de liquidação passam a ser expressos em USD.
+- **E** moeda não suportada retorna `422 VALIDATION_ERROR`, e `PATCH /groups/:id` não aceita alterar `baseCurrency`.

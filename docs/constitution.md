@@ -22,11 +22,11 @@ Ordem de precedência em caso de conflito: `constitution.md` > `specs/` > `archi
 
 ## 3. Dados e dinheiro
 
-1. **Dinheiro é inteiro em centavos** (`amountCents`). `float`/`number` fracionário nunca representa valor monetário.
-2. **Porcentagem é inteira em basis points** (1% = 100 bp; 100% = 10000 bp).
-3. O sistema opera **somente em BRL** no MVP. O campo `currency` existe, mas só aceita `BRL`.
+1. **Dinheiro é inteiro na menor unidade da moeda** (`amountMinor`: centavos em BRL/USD/EUR, ienes em JPY). A quantidade de casas decimais vem do catálogo de moedas (ISO 4217). `float`/`number` fracionário nunca representa valor monetário.
+2. **Porcentagem é inteira em basis points** (1% = 100 bp; 100% = 10000 bp). **Taxa de câmbio** é texto decimal com até 8 casas e é convertida com `BigInt`, nunca com `float`.
+3. **Multi-moeda no MVP:** cada grupo tem uma **moeda-base** (padrão `BRL`, imutável). Cada despesa pode ser lançada em qualquer moeda suportada e guarda um **snapshot imutável** (moeda, valor original, taxa e valor convertido). Rateio, saldos e plano de liquidação são sempre calculados na moeda-base.
 4. **Invariante de saldo:** a soma dos saldos de todos os participantes de um grupo é sempre `0`. Qualquer violação é bug e deve falhar de forma explícita (erro 500 logado), nunca ser mascarada.
-5. **Resto de centavos** é sempre distribuído de forma determinística e documentada (ver `specs/03-expenses.md`).
+5. **Resto da menor unidade** (centavos) é sempre distribuído de forma determinística e documentada (ver `specs/03-expenses.md`).
 6. Mudanças de schema só por migration do Prisma, versionada.
 
 ## 4. Qualidade
@@ -40,8 +40,8 @@ Ordem de precedência em caso de conflito: `constitution.md` > `specs/` > `archi
 
 ## 5. Idioma e convenções
 
-1. **Código, nomes de arquivo, identificadores, commits, branches, PRs, issues (títulos) e mensagens de erro da API em inglês.**
-2. **Documentação em português (pt-BR)**, com nomes de arquivo em inglês.
+1. **Código, nomes de arquivo, identificadores, commits, branches, títulos de PR e mensagens de erro da API em inglês.**
+2. **Documentação em português (pt-BR)**, com nomes de arquivo em inglês. **Issues e cards do board (título, história e critérios de aceite) também em português.**
 3. Textos exibidos ao usuário final na interface são em pt-BR.
 4. **Conventional Commits** com escopo e referência à issue (`Refs #n`). Ver `engineering/git-workflow.md`.
 

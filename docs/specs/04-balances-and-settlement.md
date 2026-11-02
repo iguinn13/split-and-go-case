@@ -2,7 +2,7 @@
 
 ## Contexto
 
-A partir das despesas, o sistema calcula o **saldo** de cada participante e propõe o **menor número de transferências** para zerar todos. No fechamento, o plano é persistido e cada transferência pode ser marcada como paga.
+A partir das despesas, o sistema calcula o **saldo** de cada participante e propõe o **menor número de transferências** para zerar todos. Todos os valores desta spec estão na **moeda-base do grupo** (ver `06-currencies.md`); despesas em outras moedas entram já convertidas (`amountMinor`). No fechamento, o plano é persistido e cada transferência pode ser marcada como paga.
 
 ## User stories
 
@@ -28,15 +28,15 @@ A partir das despesas, o sistema calcula o **saldo** de cada participante e prop
 
 | ID | Regra |
 |---|---|
-| RN-BAL-01 | `saldo = Σ(despesas pagas pelo participante) − Σ(partes do participante)`. Positivo: tem a receber. Negativo: deve. |
+| RN-BAL-01 | `saldo = Σ(valor convertido das despesas pagas pelo participante) − Σ(partes convertidas do participante)`, na moeda-base. Positivo: tem a receber. Negativo: deve. |
 | RN-BAL-02 | **Invariante:** a soma dos saldos de um grupo é `0`. Se não for, o sistema responde `500` e registra erro (nunca mascara). |
-| RN-BAL-03 | O **extrato** lista, em ordem cronológica, cada despesa em que o participante pagou e/ou tem parte, com `pago`, `devido`, `efeito no saldo` e `saldo acumulado`. O último saldo acumulado é igual ao saldo do participante. |
+| RN-BAL-03 | O **extrato** lista, em ordem cronológica, cada despesa em que o participante pagou e/ou tem parte, com `pago`, `devido`, `efeito no saldo` e `saldo acumulado` (na moeda-base). Para despesas em moeda estrangeira, a linha também mostra moeda, valor original e taxa. O último saldo acumulado é igual ao saldo do participante. |
 
 ### Simplificação
 
 | ID | Regra |
 |---|---|
-| RN-BAL-04 | O plano é uma lista de transferências `from → to → amountCents` com `amountCents > 0`, `from` com saldo negativo e `to` com saldo positivo. |
+| RN-BAL-04 | O plano é uma lista de transferências `from → to → amountMinor` com `amountMinor > 0`, `from` com saldo negativo e `to` com saldo positivo. |
 | RN-BAL-05 | Aplicar todas as transferências zera o saldo de todos os participantes. |
 | RN-BAL-06 | Participantes com saldo `0` não aparecem no plano. |
 | RN-BAL-07 | **Minimização:** com até 16 participantes de saldo diferente de zero, o número de transferências é o **mínimo possível** (`n − g`, onde `g` é o maior número de subgrupos disjuntos cuja soma de saldos é zero). Acima disso, usa-se a heurística gulosa (maior credor × maior devedor), que gera no máximo `n − 1` transferências. Ver ADR 0002. |
@@ -54,6 +54,7 @@ A partir das despesas, o sistema calcula o **saldo** de cada participante e prop
 | RN-BAL-14 | Qualquer participante vinculado pode marcar uma transferência como `PAID`; a operação é idempotente e grava `paidAt` na primeira vez. |
 | RN-BAL-15 | Transferências só podem ser marcadas como pagas em grupo `CLOSED` (`409 GROUP_NOT_CLOSED`). |
 | RN-BAL-16 | Um grupo `CLOSED` não reabre no MVP. |
+| RN-BAL-17 | O plano e as transferências são expressos na moeda-base do grupo, independentemente das moedas das despesas. |
 
 ## Exemplos
 
@@ -77,7 +78,7 @@ A partir das despesas, o sistema calcula o **saldo** de cada participante e prop
 
 ### AC-BAL-03 — Extrato individual
 - **Quando** chamo `GET /groups/:id/members/:memberId/statement`
-- **Então** recebo as linhas em ordem cronológica, cada uma com `paidCents`, `owedCents`, `netCents` e `runningBalanceCents`, e o último `runningBalanceCents` é igual ao saldo do participante.
+- **Então** recebo as linhas em ordem cronológica, cada uma com `paidMinor`, `owedMinor`, `netMinor` e `runningBalanceMinor`, e o último `runningBalanceMinor` é igual ao saldo do participante.
 
 ### AC-BAL-04 — Cadeia simplificada
 - **Dado** saldos A = −5000, B = 0, C = +5000
@@ -130,3 +131,9 @@ A partir das despesas, o sistema calcula o **saldo** de cada participante e prop
 ### AC-BAL-14 — Concorrência no fechamento
 - **Dado** um fechamento e a criação de uma despesa simultâneos
 - **Então** a despesa ou é incluída no plano ou é rejeitada com `GROUP_CLOSED`; nunca fica fora do plano com o grupo fechado.
+
+### AC-BAL-15 — Saldo com despesas em moedas diferentes
+- **Dado** um grupo em BRL com uma despesa de R$ 100,00 paga por Ana (dividida entre Ana e Bia) e uma de US$ 100,00 (taxa `5.4325`) paga por Bia (dividida entre Ana e Bia)
+- **Quando** consulto os saldos
+- **Então** Ana tem `−22163` e Bia tem `+22163` (Ana deve R$ 221,63 a Bia), a soma é `0`, e o plano é `Ana → Bia: 22163`, tudo em reais.
+  - (Despesa 1: Ana pagou `10000`, partes `5000/5000`. Despesa 2: Bia pagou `54325`, partes `27163/27162` — a Ana, primeira por `memberId`, fica com o centavo extra.)
