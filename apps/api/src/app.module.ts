@@ -8,6 +8,7 @@ import { BalancesModule } from './modules/balances/balances.module.js';
 import { ExpensesModule } from './modules/expenses/expenses.module.js';
 import { GroupsModule } from './modules/groups/groups.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { SettlementsModule } from './modules/settlements/settlements.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HealthModule } from './modules/health/health.module.js';
     GroupsModule,
     ExpensesModule,
     BalancesModule,
+    SettlementsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })
