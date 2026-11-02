@@ -1,12 +1,17 @@
 'use client';
 
+import { Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
+import { Alert } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
 import { Input } from '@/components/ui/input';
 import { SESSION_EXPIRED_PATH } from '@/lib/auth/paths';
 import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { expensesHref, todayIso } from '@/lib/expenses/format';
 import {
   displayRate,
@@ -43,6 +48,8 @@ type SuggestionState =
   | { status: 'loading' }
   | { status: 'ok'; source: string; date: string }
   | { status: 'error' };
+
+const SECTION = 'flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-card';
 
 const SPLIT_OPTIONS: { value: SplitType; label: string }[] = [
   { value: 'EQUAL', label: 'Igualmente' },
@@ -258,253 +265,261 @@ export function ExpenseForm({
       onSubmit={(event) => void onSubmit(event)}
       noValidate
       aria-busy={pending}
-      className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4"
+      className="flex flex-col gap-4"
     >
-      <Input
-        id="expense-description"
-        label="Descrição"
-        value={description}
-        maxLength={120}
-        autoComplete="off"
-        error={show('description')}
-        onChange={(e) => setDescription(e.target.value)}
-        onBlur={() => touch('description')}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Select
-          id="expense-currency"
-          label="Moeda"
-          value={currency}
-          options={currencies.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
-          onChange={(e) => changeCurrency(e.target.value)}
+      <section className={SECTION}>
+        <Input
+          id="expense-description"
+          label="Descrição"
+          value={description}
+          maxLength={120}
+          autoComplete="off"
+          error={show('description')}
+          onChange={(e) => setDescription(e.target.value)}
+          onBlur={() => touch('description')}
         />
-        <div className="flex flex-col gap-1">
-          <Input
-            id="expense-amount"
-            label={`Valor (${currency})`}
-            inputMode={units === 0 ? 'numeric' : 'decimal'}
-            autoComplete="off"
-            value={amount}
-            placeholder={units === 0 ? '0' : '0,00'}
-            error={amountParse.error ?? show('amount', 'originalAmountMinor')}
-            announceError
-            describedBy="expense-amount-preview"
-            onChange={(e) => setAmount(e.target.value)}
-            onBlur={() => touch('amount')}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select
+            id="expense-currency"
+            label="Moeda"
+            value={currency}
+            options={currencies.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
+            onChange={(e) => changeCurrency(e.target.value)}
           />
-          <div id="expense-amount-preview" aria-live="polite" className="flex flex-col gap-0.5">
-            {originalAmountMinor !== null && originalAmountMinor > 0n ? (
-              <p className="text-base font-semibold" data-testid="amount-formatted">
-                {formatMoney(originalAmountMinor, currency)}
-              </p>
+          <div className="flex flex-col gap-1">
+            <Input
+              id="expense-amount"
+              label={`Valor (${currency})`}
+              inputMode={units === 0 ? 'numeric' : 'decimal'}
+              autoComplete="off"
+              value={amount}
+              placeholder={units === 0 ? '0' : '0,00'}
+              error={amountParse.error ?? show('amount', 'originalAmountMinor')}
+              announceError
+              describedBy="expense-amount-preview"
+              onChange={(e) => setAmount(e.target.value)}
+              onBlur={() => touch('amount')}
+            />
+            <div id="expense-amount-preview" aria-live="polite" className="flex flex-col gap-0.5">
+              {originalAmountMinor !== null && originalAmountMinor > 0n ? (
+                <p className="text-amount font-bold" data-testid="amount-formatted">
+                  {formatMoney(originalAmountMinor, currency)}
+                </p>
+              ) : null}
+              {amountParse.ok && amountParse.thousandsHint ? (
+                <p className="text-sm text-muted-foreground" data-testid="amount-hint">
+                  Lido como {formatMoney(amountParse.minor, currency)} (o separador marca milhares).
+                  Para centavos, digite 1,23.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {foreign ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-3">
+            <Input
+              id="expense-rate"
+              label={`Taxa de câmbio (1 ${currency} em ${baseCurrency})`}
+              inputMode="decimal"
+              autoComplete="off"
+              value={rate}
+              error={show('rate', 'exchangeRate')}
+              onChange={(e) => {
+                setRate(sanitizeRateInput(e.target.value));
+                setRateTouched(true);
+              }}
+              onBlur={() => touch('rate')}
+              describedBy="expense-rate-hint"
+            />
+            <p id="expense-rate-hint" className="text-sm text-muted-foreground">
+              {suggestionHint}
+            </p>
+            {suggestion.status === 'error' ? (
+              <Notice tone="warning" role="alert" title="Não foi possível buscar a taxa.">
+                Informe a taxa manualmente ou tente buscar novamente.
+              </Notice>
             ) : null}
-            {amountParse.ok && amountParse.thousandsHint ? (
-              <p className="text-sm text-muted-foreground" data-testid="amount-hint">
-                Lido como {formatMoney(amountParse.minor, currency)} (o separador marca milhares).
-                Para centavos, digite 1,23.
+            <Button
+              variant="secondary"
+              className="self-start"
+              disabled={suggestion.status === 'loading'}
+              onClick={() => {
+                setRateTouched(false);
+                setRetry((n) => n + 1);
+              }}
+            >
+              {suggestion.status === 'error' ? 'Tentar buscar novamente' : 'Usar taxa sugerida'}
+            </Button>
+            {preview.ok ? (
+              <p className="font-medium" data-testid="converted-total">
+                ≈ {formatMoney(preview.amountMinor, baseCurrency)}
               </p>
             ) : null}
           </div>
-        </div>
-      </div>
+        ) : null}
+      </section>
 
-      {foreign ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
-          <Input
-            id="expense-rate"
-            label={`Taxa de câmbio (1 ${currency} em ${baseCurrency})`}
-            inputMode="decimal"
-            autoComplete="off"
-            value={rate}
-            error={show('rate', 'exchangeRate')}
-            onChange={(e) => {
-              setRate(sanitizeRateInput(e.target.value));
-              setRateTouched(true);
-            }}
-            onBlur={() => touch('rate')}
-            describedBy="expense-rate-hint"
+      <section className={SECTION}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select
+            id="expense-paid-by"
+            label="Pago por"
+            value={paidBy}
+            options={members.map((m) => ({ value: m.id, label: m.name }))}
+            onChange={(e) => setPaidBy(e.target.value)}
           />
-          <p id="expense-rate-hint" className="text-sm text-muted-foreground">
-            {suggestionHint}
-          </p>
-          {suggestion.status === 'error' ? (
-            <p role="alert" className="text-sm font-medium text-danger-700">
-              Aviso: Não foi possível buscar a taxa. Informe manualmente.
-            </p>
-          ) : null}
-          <Button
-            variant="secondary"
-            className="self-start"
-            disabled={suggestion.status === 'loading'}
-            onClick={() => {
-              setRateTouched(false);
-              setRetry((n) => n + 1);
-            }}
-          >
-            {suggestion.status === 'error' ? 'Tentar buscar novamente' : 'Usar taxa sugerida'}
-          </Button>
-          {preview.ok ? (
-            <p className="font-medium" data-testid="converted-total">
-              ≈ {formatMoney(preview.amountMinor, baseCurrency)}
-            </p>
-          ) : null}
+          <Input
+            id="expense-date"
+            label="Data"
+            type="date"
+            value={date}
+            error={show('date', 'occurredOn')}
+            onChange={(e) => setDate(e.target.value)}
+            onBlur={() => touch('date')}
+          />
         </div>
-      ) : null}
+      </section>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Select
-          id="expense-paid-by"
-          label="Pago por"
-          value={paidBy}
-          options={members.map((m) => ({ value: m.id, label: m.name }))}
-          onChange={(e) => setPaidBy(e.target.value)}
-        />
-        <Input
-          id="expense-date"
-          label="Data"
-          type="date"
-          value={date}
-          error={show('date', 'occurredOn')}
-          onChange={(e) => setDate(e.target.value)}
-          onBlur={() => touch('date')}
-        />
-      </div>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Tipo de rateio</legend>
-        <div className="flex flex-wrap gap-2">
-          {SPLIT_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
-                splitType === option.value ? 'border-brand-600 bg-brand-50' : 'border-line'
-              }`}
-            >
-              <input
-                type="radio"
-                name="splitType"
-                value={option.value}
-                checked={splitType === option.value}
-                onChange={() => {
-                  setSplitType(option.value);
-                  setValues({});
-                }}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Participantes do rateio</legend>
-        <ul className="flex flex-col gap-2">
-          {members.map((member) => {
-            const checked = selected.includes(member.id);
-            const share = preview.ok
-              ? preview.shares.find((s) => s.memberId === member.id)
-              : undefined;
-            return (
-              <li
-                key={member.id}
-                className="flex flex-col gap-2 rounded-lg border border-line p-2 sm:flex-row sm:items-center sm:justify-between"
+      <section className={SECTION}>
+        <h2 className="text-heading font-semibold">Rateio</h2>
+        <fieldset className="flex min-w-0 flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Tipo de rateio</legend>
+          <div className="flex flex-wrap gap-2">
+            {SPLIT_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
+                  splitType === option.value
+                    ? 'border-primary bg-accent text-accent-foreground'
+                    : 'border-input bg-card',
+                )}
               >
-                <label className="inline-flex min-h-11 items-center gap-2 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleMember(member.id)}
-                  />
-                  <span className="break-words">{member.name}</span>
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  {checked && splitType !== 'EQUAL' ? (
-                    <Input
-                      id={`expense-share-${member.id}`}
-                      label={
-                        splitType === 'PERCENTAGE'
-                          ? `Porcentagem de ${member.name} (%)`
-                          : `Valor de ${member.name} (${currency})`
-                      }
-                      inputMode="decimal"
-                      autoComplete="off"
-                      className="w-36"
-                      value={values[member.id] ?? ''}
-                      placeholder={splitType === 'PERCENTAGE' ? '0' : units === 0 ? '0' : '0,00'}
-                      announceError
-                      error={
-                        (splitType === 'PERCENTAGE'
-                          ? parsePercent(values[member.id] ?? '')
-                          : parseAmount(values[member.id] ?? '', units, currency)
-                        ).error ?? undefined
-                      }
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setValues((current) => ({ ...current, [member.id]: next }));
-                      }}
-                    />
-                  ) : null}
-                  {checked && share ? (
-                    <span className="text-sm" data-testid={`share-${member.id}`}>
-                      {foreign ? (
-                        <>
-                          <span className="text-muted-foreground">
-                            {formatMoney(share.originalAmountMinor, currency)} →{' '}
-                          </span>
-                        </>
-                      ) : null}
-                      <strong>{formatMoney(share.amountMinor, baseCurrency)}</strong>
-                      {splitType === 'PERCENTAGE' ? (
-                        <span className="text-muted-foreground">
-                          {' '}
-                          ({formatBasisPoints(parsePercentInput(values[member.id] ?? '') ?? 0n)})
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </fieldset>
-
-      {problems.length === 0 ? (
-        <p role="status" className="rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium">
-          Rateio completo: {chosen.length} participante(s), total{' '}
-          {preview.ok ? formatMoney(preview.amountMinor, baseCurrency) : ''}.
-        </p>
-      ) : (
-        <div role="status" className="rounded-lg border border-line px-3 py-2 text-sm">
-          <p className="font-medium">Para salvar:</p>
-          <ul className="list-disc pl-5" data-testid="problems">
-            {problems.map((problem) => (
-              <li key={problem}>{problem}</li>
+                <input
+                  type="radio"
+                  name="splitType"
+                  value={option.value}
+                  checked={splitType === option.value}
+                  onChange={() => {
+                    setSplitType(option.value);
+                    setValues({});
+                  }}
+                />
+                {option.label}
+              </label>
             ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="flex min-w-0 flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Participantes do rateio</legend>
+          <ul className="flex flex-col gap-2">
+            {members.map((member) => {
+              const checked = selected.includes(member.id);
+              const share = preview.ok
+                ? preview.shares.find((s) => s.memberId === member.id)
+                : undefined;
+              return (
+                <li
+                  key={member.id}
+                  className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-card p-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <label className="inline-flex min-h-11 min-w-0 items-center gap-2 font-medium">
+                    <input
+                      type="checkbox"
+                      className="size-4 shrink-0"
+                      checked={checked}
+                      onChange={() => toggleMember(member.id)}
+                    />
+                    <Avatar name={member.name} size="sm" decorative />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{member.name}</span>
+                  </label>
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    {checked && splitType !== 'EQUAL' ? (
+                      <Input
+                        id={`expense-share-${member.id}`}
+                        label={
+                          splitType === 'PERCENTAGE'
+                            ? `Porcentagem de ${member.name} (%)`
+                            : `Valor de ${member.name} (${currency})`
+                        }
+                        inputMode="decimal"
+                        autoComplete="off"
+                        className="w-36"
+                        value={values[member.id] ?? ''}
+                        placeholder={splitType === 'PERCENTAGE' ? '0' : units === 0 ? '0' : '0,00'}
+                        announceError
+                        error={
+                          (splitType === 'PERCENTAGE'
+                            ? parsePercent(values[member.id] ?? '')
+                            : parseAmount(values[member.id] ?? '', units, currency)
+                          ).error ?? undefined
+                        }
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setValues((current) => ({ ...current, [member.id]: next }));
+                        }}
+                      />
+                    ) : null}
+                    {checked && share ? (
+                      <span className="text-sm" data-testid={`share-${member.id}`}>
+                        {foreign ? (
+                          <>
+                            <span className="text-muted-foreground">
+                              {formatMoney(share.originalAmountMinor, currency)} →{' '}
+                            </span>
+                          </>
+                        ) : null}
+                        <strong>{formatMoney(share.amountMinor, baseCurrency)}</strong>
+                        {splitType === 'PERCENTAGE' ? (
+                          <span className="text-muted-foreground">
+                            {' '}
+                            ({formatBasisPoints(parsePercentInput(values[member.id] ?? '') ?? 0n)})
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-        </div>
-      )}
+        </fieldset>
 
-      {serverError ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-danger-700 bg-danger-50 px-3 py-2 text-sm text-danger-700"
-        >
-          Erro: {serverError}
-        </div>
-      ) : null}
+        {problems.length === 0 ? (
+          <Notice title="Rateio completo">
+            {chosen.length} participante(s), total{' '}
+            {preview.ok ? formatMoney(preview.amountMinor, baseCurrency) : ''}.
+          </Notice>
+        ) : (
+          <div role="status" className="rounded-lg border border-border bg-muted px-3 py-2 text-sm">
+            <p className="font-medium">Para salvar:</p>
+            <ul className="list-disc pl-5" data-testid="problems">
+              {problems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={!canSave}>
-          {pending ? 'Salvando...' : 'Salvar'}
-        </Button>
-        <Link
-          href={expensesHref(groupId)}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:bg-brand-50"
-        >
+      {serverError ? <Alert>{serverError}</Alert> : null}
+
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Link href={expensesHref(groupId)} className={buttonVariants({ variant: 'secondary' })}>
           Cancelar
         </Link>
+        <Button
+          type="submit"
+          size="lg"
+          icon={<Save aria-hidden />}
+          loading={pending}
+          disabled={!canSave}
+        >
+          {pending ? 'Salvando...' : 'Salvar'}
+        </Button>
       </div>
     </form>
   );

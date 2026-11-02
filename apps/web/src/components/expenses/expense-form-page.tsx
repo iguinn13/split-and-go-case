@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { ExpenseForm } from '@/components/expenses/expense-form';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -24,7 +26,7 @@ export async function ExpenseFormPage({
         title="Não foi possível carregar o formulário"
         message={errorMessage(error.code)}
         action={
-          <Link href={expensesHref(groupId)} className="font-semibold underline">
+          <Link href={expensesHref(groupId)} className={buttonVariants({ variant: 'secondary' })}>
             Voltar às despesas
           </Link>
         }
@@ -33,7 +35,7 @@ export async function ExpenseFormPage({
   }
   const { group, me, currencies, expense } = data;
   const back = (
-    <Link href={expensesHref(group.id)} className="font-semibold underline">
+    <Link href={expensesHref(group.id)} className={buttonVariants({ variant: 'secondary' })}>
       Voltar às despesas
     </Link>
   );
@@ -58,13 +60,12 @@ export async function ExpenseFormPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        {back}
-        <h1 className="mt-1 text-2xl font-bold">{expense ? 'Editar despesa' : 'Nova despesa'}</h1>
-        <p className="text-sm text-muted-foreground">
-          {group.name} · Moeda-base: {group.baseCurrency}
-        </p>
-      </div>
+      <PageHeader
+        title={expense ? 'Editar despesa' : 'Nova despesa'}
+        backHref={expensesHref(group.id)}
+        backLabel="Voltar às despesas"
+        description={`${group.name} · Moeda-base: ${group.baseCurrency}`}
+      />
       {blocked ? (
         <EmptyState title={blocked.title} description={blocked.description} action={back} />
       ) : (
