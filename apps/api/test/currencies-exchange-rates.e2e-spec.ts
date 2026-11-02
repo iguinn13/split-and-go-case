@@ -84,6 +84,8 @@ describe('Currencies and exchange rates (e2e)', () => {
       '?from=XYZ&to=BRL',
       '?from=USD&to=BRL&date=2026-13-40',
       '?from=USD&to=BRL&date=10/07/2026',
+      '?from=USD&to=BRL&date=1998-12-31',
+      '?from=USD&to=BRL&date=2999-01-01',
     ]) {
       const res = await request(server()).get(`/exchange-rates${q}`).set(auth).expect(422);
       expect((res.body as { code: string }).code).toBe('VALIDATION_ERROR');

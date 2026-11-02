@@ -48,7 +48,7 @@ Todas existem no provedor de sugestão de câmbio. Adicionar uma moeda é uma li
 | RN-CUR-07 | A taxa é **snapshot imutável** da despesa: não muda quando o câmbio muda. Só muda se a despesa for editada. |
 | RN-CUR-08 | O rateio é feito pela alocação proporcional por maior resto (`03-expenses.md`), tanto no valor original quanto no convertido. A soma das partes convertidas é **sempre** igual ao `amountMinor` da despesa. |
 | RN-CUR-09 | A moeda-base do grupo não muda depois de criado. |
-| RN-CUR-10 | **Sugestão de taxa:** vem de um provedor externo (BCE, via Frankfurter), com cache em memória por par e data (1 h). Mesma moeda retorna `1` sem chamar o provedor. |
+| RN-CUR-10 | **Sugestão de taxa:** vem de um provedor externo (BCE, via Frankfurter), com cache em memória por par e data (1 h, no máximo 500 entradas; chamadas simultâneas da mesma chave compartilham uma só consulta ao provedor). A data aceita vai de 1999-01-04 até amanhã em UTC. Mesma moeda retorna `1` sem chamar o provedor. |
 | RN-CUR-11 | Falha ou indisponibilidade do provedor retorna `503 EXCHANGE_RATE_UNAVAILABLE`; o usuário informa a taxa manualmente e a despesa segue normalmente. |
 | RN-CUR-12 | O plano de liquidação é sempre na moeda-base (liquidar em outras moedas é V2). |
 

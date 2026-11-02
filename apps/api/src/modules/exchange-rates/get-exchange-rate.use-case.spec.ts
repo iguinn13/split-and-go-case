@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeExchangeRateProvider } from '../../../test/support/fake-exchange-rate.provider.js';
 import { AppError } from '../../common/errors/app-error.js';
-import { CACHE_TTL_MS, GetExchangeRateUseCase } from './get-exchange-rate.use-case.js';
+import type { ExchangeRateProvider, ProviderRate } from './exchange-rate-provider.js';
+import {
+  CACHE_MAX_ENTRIES,
+  CACHE_TTL_MS,
+  GetExchangeRateUseCase,
+} from './get-exchange-rate.use-case.js';
 
 describe('GetExchangeRateUseCase', () => {
   let provider: FakeExchangeRateProvider;
@@ -71,6 +76,98 @@ describe('GetExchangeRateUseCase', () => {
   it('maps an unknown pair to 503', async () => {
     await expect(useCase.execute({ from: 'JPY', to: 'KRW' })).rejects.toMatchObject({
       code: 'EXCHANGE_RATE_UNAVAILABLE',
+    });
+  });
+
+  describe('cache bound', () => {
+    const dayN = (n: number): string =>
+      new Date(Date.UTC(2000, 0, 1 + n)).toISOString().slice(0, 10);
+
+    it('never holds more than CACHE_MAX_ENTRIES and evicts the oldest first', async () => {
+      for (let i = 0; i < CACHE_MAX_ENTRIES + 10; i++) {
+        await useCase.execute({ from: 'USD', to: 'BRL', date: dayN(i) });
+      }
+      const size = (useCase as unknown as { cache: Map<string, unknown> }).cache.size;
+      expect(size).toBe(CACHE_MAX_ENTRIES);
+      const before = provider.calls.length;
+      await useCase.execute({ from: 'USD', to: 'BRL', date: dayN(CACHE_MAX_ENTRIES + 9) }); // newest: hit
+      expect(provider.calls).toHaveLength(before);
+      await useCase.execute({ from: 'USD', to: 'BRL', date: dayN(0) }); // oldest: evicted
+      expect(provider.calls).toHaveLength(before + 1);
+    });
+
+    it('sweeps expired entries even when the cache is not full', async () => {
+      for (let i = 0; i < 20; i++) {
+        await useCase.execute({ from: 'USD', to: 'BRL', date: dayN(i) });
+      }
+      vi.advanceTimersByTime(CACHE_TTL_MS + 1);
+      await useCase.execute({ from: 'USD', to: 'BRL', date: dayN(100) });
+      const size = (useCase as unknown as { cache: Map<string, unknown> }).cache.size;
+      expect(size).toBe(1);
+    });
+  });
+
+  describe('in-flight de-duplication', () => {
+    class DeferredProvider implements ExchangeRateProvider {
+      readonly source = 'deferred';
+      calls = 0;
+      private waiters: Array<{ resolve: (r: ProviderRate) => void; reject: (e: Error) => void }> =
+        [];
+      getRate(): Promise<ProviderRate> {
+        this.calls++;
+        return new Promise((resolve, reject) => this.waiters.push({ resolve, reject }));
+      }
+      resolveAll(rate: string): void {
+        this.waiters.splice(0).forEach((w) => w.resolve({ rate, date: '2026-07-10' }));
+      }
+      rejectAll(): void {
+        this.waiters.splice(0).forEach((w) => w.reject(new Error('boom')));
+      }
+    }
+    const query = { from: 'USD', to: 'BRL', date: '2026-07-10' } as const;
+
+    it('shares one provider call between concurrent requests for the same key', async () => {
+      const deferred = new DeferredProvider();
+      const uc = new GetExchangeRateUseCase(deferred);
+      const all = Promise.all([uc.execute(query), uc.execute(query), uc.execute(query)]);
+      await Promise.resolve();
+      expect(deferred.calls).toBe(1);
+      deferred.resolveAll('5.5');
+      const results = await all;
+      expect(results.map((r) => r.rate)).toEqual(['5.5', '5.5', '5.5']);
+      expect(deferred.calls).toBe(1);
+    });
+
+    it('does not share calls across different keys', async () => {
+      const deferred = new DeferredProvider();
+      const uc = new GetExchangeRateUseCase(deferred);
+      const all = Promise.all([uc.execute(query), uc.execute({ ...query, date: '2026-07-09' })]);
+      await Promise.resolve();
+      expect(deferred.calls).toBe(2);
+      deferred.resolveAll('5.5');
+      await all;
+    });
+
+    it('fails every waiter of a failed shared call, caches nothing and recovers afterwards', async () => {
+      const deferred = new DeferredProvider();
+      const uc = new GetExchangeRateUseCase(deferred);
+      const all = Promise.allSettled([uc.execute(query), uc.execute(query)]);
+      await Promise.resolve();
+      deferred.rejectAll();
+      const settled = await all;
+      expect(settled.map((r) => r.status)).toEqual(['rejected', 'rejected']);
+      for (const r of settled) {
+        expect((r as PromiseRejectedResult).reason).toMatchObject({
+          code: 'EXCHANGE_RATE_UNAVAILABLE',
+        });
+      }
+      expect(deferred.calls).toBe(1);
+
+      const retry = uc.execute(query);
+      await Promise.resolve();
+      expect(deferred.calls).toBe(2); // not poisoned: a new call is made
+      deferred.resolveAll('6.1');
+      await expect(retry).resolves.toMatchObject({ rate: '6.1' });
     });
   });
 });
