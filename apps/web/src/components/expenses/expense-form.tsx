@@ -12,9 +12,10 @@ import {
   displayRate,
   formatBasisPoints,
   minorUnitsOf,
+  amountInputText,
+  parseAmount,
   parseAmountInput,
   parsePercentInput,
-  sanitizeAmountInput,
   sanitizeRateInput,
   toApiRate,
 } from '@/lib/expenses/money-input';
@@ -48,12 +49,6 @@ const SPLIT_OPTIONS: { value: SplitType; label: string }[] = [
   { value: 'FIXED', label: 'Por valor fixo' },
 ];
 
-/** Initial field text for an existing amount, using the currency's decimals. */
-function minorText(minor: number, units: number): string {
-  const digits = String(minor).padStart(units + 1, '0');
-  return units === 0 ? digits : `${digits.slice(0, -units)},${digits.slice(-units)}`;
-}
-
 export function ExpenseForm({
   groupId,
   baseCurrency,
@@ -69,7 +64,7 @@ export function ExpenseForm({
   const [description, setDescription] = useState(expense?.description ?? '');
   const [currency, setCurrency] = useState(initialCurrency);
   const [amount, setAmount] = useState(
-    expense ? minorText(expense.originalAmountMinor, minorUnitsOf(initialCurrency)) : '',
+    expense ? amountInputText(expense.originalAmountMinor, minorUnitsOf(initialCurrency)) : '',
   );
   const [rate, setRate] = useState(
     expense && expense.currency !== baseCurrency ? displayRate(expense.exchangeRate) : '',
@@ -92,8 +87,8 @@ export function ExpenseForm({
       expense.shares.map((s) => [
         s.memberId,
         expense.splitType === 'PERCENTAGE'
-          ? minorText(s.basisPoints ?? 0, 2)
-          : minorText(s.originalAmountMinor, minorUnitsOf(expense.currency)),
+          ? amountInputText(s.basisPoints ?? 0, 2)
+          : amountInputText(s.originalAmountMinor, minorUnitsOf(expense.currency)),
       ]),
     );
   });
@@ -105,7 +100,8 @@ export function ExpenseForm({
 
   const foreign = currency !== baseCurrency;
   const units = minorUnitsOf(currency);
-  const originalAmountMinor = parseAmountInput(amount, units);
+  const amountParse = parseAmount(amount, units);
+  const originalAmountMinor = amountParse.ok ? amountParse.minor : null;
   const apiRate = foreign ? toApiRate(rate) : null;
 
   // Suggestion of the day (RF-UI-09); a failure only shows a warning (RF-UI-11).
@@ -142,18 +138,7 @@ export function ExpenseForm({
 
   function changeCurrency(next: string) {
     setCurrency(next);
-    setAmount((current) => sanitizeAmountInput(current, minorUnitsOf(next)));
-    // Fixed amounts are typed in the expense currency: re-apply its decimals.
-    setValues((current) =>
-      splitType === 'FIXED'
-        ? Object.fromEntries(
-            Object.entries(current).map(([id, v]) => [
-              id,
-              sanitizeAmountInput(v, minorUnitsOf(next)),
-            ]),
-          )
-        : current,
-    );
+    // The raw amount texts stay as typed: they are re-read with the new currency's decimals.
     setRateTouched(false);
     setRate('');
     setSuggestion({ status: 'idle' });
@@ -301,8 +286,8 @@ export function ExpenseForm({
             autoComplete="off"
             value={amount}
             placeholder={units === 0 ? '0' : '0,00'}
-            error={show('amount', 'originalAmountMinor')}
-            onChange={(e) => setAmount(sanitizeAmountInput(e.target.value, units))}
+            error={amountParse.error ?? show('amount', 'originalAmountMinor')}
+            onChange={(e) => setAmount(e.target.value)}
             onBlur={() => touch('amount')}
           />
           {originalAmountMinor !== null && originalAmountMinor > 0n ? (
@@ -436,11 +421,12 @@ export function ExpenseForm({
                       className="w-36"
                       value={values[member.id] ?? ''}
                       placeholder={splitType === 'PERCENTAGE' ? '0' : units === 0 ? '0' : '0,00'}
+                      error={
+                        parseAmount(values[member.id] ?? '', splitType === 'PERCENTAGE' ? 2 : units)
+                          .error ?? undefined
+                      }
                       onChange={(e) => {
-                        const next = sanitizeAmountInput(
-                          e.target.value,
-                          splitType === 'PERCENTAGE' ? 2 : units,
-                        );
+                        const next = e.target.value;
                         setValues((current) => ({ ...current, [member.id]: next }));
                       }}
                     />

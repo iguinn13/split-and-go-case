@@ -44,6 +44,15 @@ Uma despesa é paga por **1 participante** e dividida entre **N participantes**.
 
 O servidor devolve também `amountMinor` (valor convertido, na moeda-base) e, em cada parte, `originalAmountMinor` e `amountMinor`.
 
+## Entrada do valor no formulário web
+
+O campo de valor guarda o **texto bruto** digitado ou colado e o interpreta com uma função pura dele (`parseAmount` em `apps/web/src/lib/expenses/money-input.ts`). Digitar tecla a tecla e colar o mesmo texto final dão o mesmo resultado, e nada é reformatado dentro do campo (a prévia formatada aparece abaixo dele). N = casas decimais da moeda (BRL/USD/EUR: 2; JPY/KRW: 0).
+
+- Separadores iguais repetidos são milhar (`1.234.567`); com separadores diferentes, o último é o decimal (`1.234,56`, `1,234.56`). Os grupos de milhar têm 3 dígitos.
+- Um único separador seguido de 1 a N dígitos é decimal (`1,5` = 1,50); seguido de exatamente 3 dígitos (mais que N) após 1 a 3 dígitos é milhar (`1.234` = 1234, `25.000` = 25000).
+- JPY/KRW não têm decimais: todo separador é milhar; `1,5` é rejeitado.
+- Casas decimais a mais (`0,001`, `1,2345`), separadores ambíguos (`12,345,67`), sinal negativo, letras e valores com mais de 15 dígitos **não são descartados**: o campo mostra uma mensagem em pt-BR e o botão Salvar fica desabilitado. Espaços e um prefixo de moeda (`R$ `, `US$ `) são ignorados.
+
 ## Regras de negócio
 
 | ID | Regra |

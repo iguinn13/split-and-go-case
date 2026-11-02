@@ -283,7 +283,7 @@ Fonte de verdade das tasks do Split&Go. Cada seção `### T-NN` é espelhada em 
 
 **Critérios de aceite:**
 
-- [ ] Formulário com descrição, moeda (padrão: moeda-base), valor (máscara que respeita as casas da moeda → unidades mínimas), pagador, data, tipo de rateio e seleção de participantes.
+- [ ] Formulário com descrição, moeda (padrão: moeda-base), valor (campo que guarda o texto digitado e o lê conforme as casas da moeda → unidades mínimas; ver `docs/specs/03-expenses.md`, "Entrada do valor no formulário"), pagador, data, tipo de rateio e seleção de participantes.
 - [ ] Ao escolher outra moeda, aparece o campo de taxa pré-preenchido com a sugestão do dia da despesa e editável; a prévia mostra o valor convertido e as partes na moeda-base.
 - [ ] Falha na sugestão exibe o aviso e permite informar a taxa manualmente e salvar.
 - [ ] Prévia das partes em tempo real, espelhando `allocateProportionally`; botão "Salvar" desabilitado enquanto a soma for inválida, mostrando o que falta.

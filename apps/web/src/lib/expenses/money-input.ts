@@ -8,40 +8,109 @@ export function minorUnitsOf(currency: string): number {
   return isCurrencyCode(currency) ? CURRENCIES[currency].minorUnits : 2;
 }
 
-/**
- * Keeps only what a money field can hold: digits and, when the currency has decimals,
- * one separator (normalised to a comma) followed by at most `minorUnits` digits.
- */
-export function sanitizeAmountInput(text: string, minorUnits: number): string {
-  const separators = [...text].filter((c) => c === ',' || c === '.');
-  // Pasted pt-BR/en-US thousands: with several separators, equal ones are thousands marks and,
-  // when they differ, only the last one is the decimal separator.
-  const decimalIndex =
-    minorUnits === 0 || separators.length === 0
-      ? -1
-      : separators.length === 1 || new Set(separators).size > 1
-        ? text.search(/[,.](?=[^,.]*$)/)
-        : -1;
-  let integer = '';
-  let fraction = '';
-  [...text].forEach((char, index) => {
-    if (char >= '0' && char <= '9') {
-      if (decimalIndex >= 0 && index > decimalIndex) fraction += char;
-      else integer += char;
-    }
-  });
-  integer = integer.replace(/^0+(?=\d)/, '').slice(0, 12);
-  fraction = fraction.slice(0, minorUnits);
-  return decimalIndex >= 0 ? `${integer},${fraction}` : integer;
+/** Result of reading amount text: minor units, or why the text cannot be read. */
+export type AmountParse =
+  | { ok: true; minor: bigint; error: null }
+  /** `error` is null for empty text (nothing typed yet) and a pt-BR message otherwise. */
+  | { ok: false; error: string | null };
+
+const MAX_INPUT_DIGITS = 15;
+/** Optional leading currency marker: "R$", "US$", "JP¥", "€", or a catalog code ("USD"). */
+const SYMBOL_PREFIX = new RegExp(`^(?:[A-Za-z]{0,3}[$¥€£₩]|${Object.keys(CURRENCIES).join('|')})`);
+const bad = (error: string): AmountParse => ({ ok: false, error });
+
+/** Thousands grouping: 1-3 leading digits, then groups of exactly 3 ("1", "234", "567"). */
+function validGroups(groups: string[]): boolean {
+  return groups.every((g, i) => (i === 0 ? /^\d{1,3}$/.test(g) : /^\d{3}$/.test(g)));
 }
 
-/** Converts a masked amount ("1234,5") to minor units with string arithmetic only. */
-export function parseAmountInput(text: string, minorUnits: number): bigint | null {
-  const clean = sanitizeAmountInput(text, minorUnits);
-  if (clean === '' || clean === ',') return null;
-  const [integer = '', fraction = ''] = clean.split(',');
-  const digits = `${integer === '' ? '0' : integer}${fraction.padEnd(minorUnits, '0')}`;
-  return BigInt(digits);
+/**
+ * Reads what the user typed or pasted. The field keeps the RAW text and this function is the
+ * only interpretation: a pure function of the text, so typing key by key and pasting the same
+ * final text always give the same result, and nothing is reinterpreted after formatting.
+ *
+ * Rules (`units` = decimals of the currency):
+ * - several equal separators are thousands marks ("1.234.567"); groups must be 1-3 digits then
+ *   exactly 3 digits;
+ * - with mixed separators the LAST one is the decimal mark and the earlier ones (all equal) are
+ *   thousands ("1.234,56", "1,234.56");
+ * - a single separator followed by 1..units digits is decimal ("1,5", "1.23");
+ * - a single separator followed by exactly 3 digits (more than `units`) after 1-3 non-zero-led
+ *   digits is thousands ("1.234", "25.000");
+ * - anything else (extra decimals such as "0,001" or "1,2345", "12,345,67", "1,5" in JPY,
+ *   letters, sign) is rejected with a message: digits are never dropped.
+ * A leading currency symbol/code ("R$ ", "US$") and spaces are ignored.
+ */
+export function parseAmount(text: string, units: number): AmountParse {
+  const trimmed = text.replace(/[\s\u00a0]/g, '').replace(SYMBOL_PREFIX, '');
+  if (trimmed === '') return { ok: false, error: null };
+  if (trimmed.includes('-')) return bad('O valor não pode ser negativo.');
+  if (!/^[\d.,]+$/.test(trimmed)) return bad('Use apenas números, ponto e vírgula.');
+  if (trimmed.replace(/[.,]/g, '').length > MAX_INPUT_DIGITS)
+    return bad('O valor é grande demais.');
+
+  const separators = [...trimmed].filter((c) => c === ',' || c === '.');
+  let integer: string;
+  let fraction = '';
+
+  if (separators.length === 0) {
+    integer = trimmed;
+  } else {
+    const last = trimmed.search(/[,.](?=[^,.]*$)/);
+    const lastChar = trimmed[last] as string;
+    const head = trimmed.slice(0, last);
+    const tail = trimmed.slice(last + 1);
+    const headSeparators = separators.slice(0, -1);
+    const mixed = headSeparators.some((c) => c !== lastChar);
+
+    if (units === 0) {
+      // No decimals: every separator is a thousands mark.
+      if (/[.,]$/.test(trimmed) || !validGroups(trimmed.split(/[.,]/))) {
+        return bad('Esta moeda não tem casas decimais. Use ponto só para milhar (ex.: 1.234).');
+      }
+      integer = trimmed.replace(/[.,]/g, '');
+    } else if (mixed || (separators.length === 1 && tail.length <= units)) {
+      // Decimal mark is the last separator; the ones before it must be equal thousands marks.
+      if (headSeparators.some((c) => c === lastChar) || (head.length === 0 && mixed)) {
+        return bad('Valor ambíguo. Exemplo de formato: 1.234,56.');
+      }
+      if (headSeparators.length > 0 && !validGroups(head.split(/[.,]/))) {
+        return bad('Valor ambíguo. Exemplo de formato: 1.234,56.');
+      }
+      if (tail.length > units) {
+        return bad(`Esta moeda aceita no máximo ${units} casas decimais.`);
+      }
+      integer = head.replace(/[.,]/g, '');
+      fraction = tail;
+    } else if (separators.length === 1) {
+      // Single separator followed by more digits than the currency has decimals.
+      if (tail.length === 3 && /^[1-9]\d{0,2}$/.test(head)) {
+        integer = head + tail;
+      } else {
+        return bad(`Esta moeda aceita no máximo ${units} casas decimais.`);
+      }
+    } else {
+      // Several equal separators: thousands marks only.
+      if (!validGroups(trimmed.split(lastChar))) {
+        return bad('Valor ambíguo. Exemplo de formato: 1.234,56.');
+      }
+      integer = trimmed.split(lastChar).join('');
+    }
+  }
+  const digits = `${integer === '' ? '0' : integer}${fraction.padEnd(units, '0')}`;
+  return { ok: true, minor: BigInt(digits), error: null };
+}
+
+/** Minor units of the amount text, or null when it is empty or invalid. */
+export function parseAmountInput(text: string, units: number): bigint | null {
+  const result = parseAmount(text, units);
+  return result.ok ? result.minor : null;
+}
+
+/** Canonical editable text for minor units ("123450" -> "1234,50"), with no thousands marks. */
+export function amountInputText(minor: number | bigint, units: number): string {
+  const digits = String(minor).padStart(units + 1, '0');
+  return units === 0 ? digits : `${digits.slice(0, -units)},${digits.slice(-units)}`;
 }
 
 /** Percentages are typed with up to 2 decimals and stored as basis points. */
