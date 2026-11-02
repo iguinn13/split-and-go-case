@@ -470,7 +470,7 @@ Fonte de verdade das tasks do Split&Go. Cada seção `### T-NN` é espelhada em 
 ### T-23 · Implementar o catálogo de moedas e a sugestão de taxa de câmbio na API
 
 - **Área:** backend
-- **Título do PR:** `feat(exchange-rates): add currency catalog and exchange rate suggestion`
+- **Título do PR:** `feat(api): add currency catalog and exchange rate suggestion`
 - **Spec:** `docs/specs/06-currencies.md` (RF-CUR-01, RF-CUR-02, RN-CUR-10, RN-CUR-11, AC-CUR-01, AC-CUR-12, AC-CUR-13), `docs/architecture/decisions/0006-multi-currency-conversion.md`
 - **Depende de:** #11
 
