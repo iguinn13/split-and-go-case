@@ -147,8 +147,10 @@ pnpm install
 cp apps/api/.env.example apps/api/.env      # ajuste DATABASE_URL e JWT_SECRET
 cp apps/web/.env.example apps/web/.env
 docker compose up -d postgres               # apenas o banco
-pnpm --filter api prisma migrate dev        # migrations + seed
-pnpm dev                                    # api :3001 e web :3000
+pnpm --filter @split-and-go/api prisma migrate deploy   # aplica as migrations
+pnpm --filter @split-and-go/api db:seed                 # dados de demonstração (opcional)
+pnpm --filter @split-and-go/api start:dev               # API em :3001 (terminal 1)
+pnpm --filter @split-and-go/web dev                     # web em :3000 (terminal 2)
 ```
 
 ### Qualidade
