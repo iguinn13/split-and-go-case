@@ -1,9 +1,10 @@
 /** Client-side helper: calls a Route Handler and normalizes the pt-BR error message. */
-export type MutationResult<T> = { ok: true; data: T } | { ok: false; message: string };
+export type MutationResult<T> =
+  { ok: true; data: T } | { ok: false; message: string; code?: string };
 
 export async function mutate<T>(
   input: string,
-  init: { method: 'POST' | 'PUT' | 'DELETE'; body?: unknown },
+  init: { method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown },
 ): Promise<MutationResult<T>> {
   try {
     const response = await fetch(input, {
@@ -16,9 +17,13 @@ export async function mutate<T>(
       return { ok: false, message: 'Sua sessão expirou. Entre novamente.' };
     }
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { message?: string } | null;
+      const body = (await response.json().catch(() => null)) as {
+        message?: string;
+        code?: string;
+      } | null;
       return {
         ok: false,
+        code: body?.code,
         message: body?.message ?? 'Erro inesperado. Tente novamente em instantes.',
       };
     }

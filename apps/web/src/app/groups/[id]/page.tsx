@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { BalancesPanel } from '@/components/balances/balances-panel';
 import { ExpensesPanel } from '@/components/expenses/expenses-panel';
 import { MembersPanel } from '@/components/groups/members-panel';
-import { EmptyState } from '@/components/ui/empty-state';
+import { SettlementPanel } from '@/components/settlement/settlement-panel';
 import { ErrorState } from '@/components/ui/error-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
@@ -118,10 +118,7 @@ export default async function GroupPage({
       ) : tab === 'balances' ? (
         <BalancesPanel groupId={group.id} />
       ) : (
-        <EmptyState
-          title={`${TABS.find((t) => t.id === tab)?.label ?? ''}: em breve`}
-          description="Esta seção será disponibilizada em uma próxima etapa."
-        />
+        <SettlementPanel groupId={group.id} isOwner={group.ownerId === me.id} />
       )}
     </div>
   );
