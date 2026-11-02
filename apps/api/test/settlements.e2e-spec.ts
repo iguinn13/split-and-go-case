@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
+import { ExpensesService } from '../src/modules/expenses/expenses.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 interface GroupBody {
@@ -331,4 +332,75 @@ describe('Settlements (e2e)', () => {
     }
     console.info(`concurrency: ${included} expenses included, ${rejected} rejected`);
   });
+
+  // Regression: the close used to read expenses through the pool while holding its own
+  // connection, so more blocked writers than pool connections (10) starved it into a 500.
+  // The read inside the lock is held open for a while so the writers pile up behind it.
+  it.each([15, 30])(
+    'AC-BAL-14: closing with %i writers blocked on the lock does not starve the pool',
+    async (writerCount) => {
+      const { group, m } = await makeGroup(['ana', 'bia', 'caio']);
+      await addExpense(group.id, {
+        originalAmountMinor: 3000,
+        paidByMemberId: m['ana'],
+        split: { type: 'EQUAL', participantIds: Object.values(m) },
+      });
+      const expensesService = app.get(ExpensesService);
+      const original = expensesService.listForBalance.bind(expensesService);
+      let insideLock = false;
+      expensesService.listForBalance = async (...args) => {
+        // Only the close reads while the writers exist; the group is locked at this point.
+        insideLock = true;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        return original(...args);
+      };
+      try {
+        const closing = post('ana', `/groups/${group.id}/close`).then((res) => res.status);
+        const deadline = Date.now() + 5000;
+        while (!insideLock && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+        const writers = Array.from({ length: writerCount }, (_, i) =>
+          request(server())
+            .post(`/groups/${group.id}/expenses`)
+            .set(auth('ana'))
+            .send(
+              expenseBody({
+                description: `Concurrent ${i}`,
+                originalAmountMinor: 1000 + i,
+                paidByMemberId: m['bia'],
+                split: { type: 'EQUAL', participantIds: Object.values(m) },
+              }),
+            )
+            .then((res) => ({ status: res.status, code: (res.body as { code?: string }).code })),
+        );
+        const [closeStatus, ...results] = await Promise.all([closing, ...writers]);
+        expect(insideLock).toBe(true);
+        expect(closeStatus).toBe(200);
+        for (const r of results) {
+          if (r.status !== 201) expect(r).toEqual({ status: 409, code: 'GROUP_CLOSED' });
+        }
+        const expenses = await prisma.expense.findMany({
+          where: { groupId: group.id },
+          include: { shares: true },
+        });
+        expect(expenses.length).toBe(1 + results.filter((r) => r.status === 201).length);
+        const net = new Map(group.members.map((x) => [x.id, 0]));
+        for (const e of expenses) {
+          net.set(e.paidByMemberId, net.get(e.paidByMemberId)! + e.amountMinor);
+          for (const s of e.shares) net.set(s.memberId, net.get(s.memberId)! - s.amountMinor);
+        }
+        const transfers = await prisma.settlementTransfer.findMany({
+          where: { groupId: group.id },
+        });
+        for (const t of transfers) {
+          net.set(t.fromMemberId, net.get(t.fromMemberId)! + t.amountMinor);
+          net.set(t.toMemberId, net.get(t.toMemberId)! - t.amountMinor);
+        }
+        expect([...net.values()]).toEqual([0, 0, 0]);
+      } finally {
+        expensesService.listForBalance = original;
+      }
+    },
+  );
 });

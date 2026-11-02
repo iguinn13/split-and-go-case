@@ -54,8 +54,12 @@ export class ExpensesRepository {
     return { items, total };
   }
 
-  listAllChronological(groupId: string): Promise<ExpenseWithShares[]> {
-    return this.prisma.expense.findMany({
+  /** `db` lets a caller read inside its own transaction (same connection, same lock). */
+  listAllChronological(
+    groupId: string,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<ExpenseWithShares[]> {
+    return db.expense.findMany({
       where: { groupId },
       include: withShares,
       orderBy: [{ occurredOn: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],

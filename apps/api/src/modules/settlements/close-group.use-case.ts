@@ -17,9 +17,9 @@ export class CloseGroupUseCase {
   async execute(userId: string, groupId: string): Promise<SettlementPlanView> {
     const group = await this.access.assertIsOwner(groupId, userId);
     const memberIds = group.members.map((m) => m.id);
-    // The plan is computed after the repository locks the group row (RN-BAL-12).
-    const rows = await this.settlements.closeGroup(groupId, async () =>
-      calculateSettlementPlan(memberIds, await this.expenses.listForBalance(groupId)),
+    // The plan is computed after the repository locks the group row (RN-BAL-12), reading on its transaction.
+    const rows = await this.settlements.closeGroup(groupId, async (tx) =>
+      calculateSettlementPlan(memberIds, await this.expenses.listForBalance(groupId, tx)),
     );
     const names = new Map(group.members.map((m) => [m.id, m.name]));
     return toClosedPlanView(group, rows, names);
