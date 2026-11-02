@@ -13,7 +13,7 @@ O histórico de commits conta a evolução técnica do produto e se liga às tas
 | `docs/<issue>-<slug>` | Somente documentação |
 | `test/<issue>-<slug>` | Somente testes |
 
-`<issue>` é o número da issue no GitHub; `<slug>` em inglês e `kebab-case`.
+`<issue>` é o número da issue no GitHub; `<slug>` em inglês e `kebab-case`, derivado do campo **Título do PR** da issue. As issues e cards do board são escritos em português; branches, commits e títulos de PR ficam em inglês.
 
 ## Conventional Commits
 
@@ -57,7 +57,7 @@ Refs #11
 
 ## Pull requests
 
-- Título no formato de Conventional Commit (será o título do squash merge): `feat(expenses): add expense CRUD endpoints`.
+- Título igual ao campo **Título do PR** da issue, em Conventional Commit (será o título do squash merge): `feat(expenses): add expense crud endpoints`.
 - Corpo usa `.github/pull_request_template.md`, inclui `Closes #<n>` e o checklist de critérios de aceite da issue.
 - Um PR resolve **uma** issue.
 - Merge por **squash**; a branch é apagada depois.

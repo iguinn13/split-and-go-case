@@ -4,12 +4,12 @@ Itens priorizados por impacto no negócio. Cada um explica o problema, a propost
 
 ## Melhorias de negócio
 
-### 1. Multi-moeda com taxa de câmbio por despesa
+### 1. Liquidação em múltiplas moedas e câmbio no dia do pagamento
 
-- **Problema:** Viagens internacionais misturam moedas. No MVP, o usuário precisa converter manualmente fora do app.
-- **Proposta:** Cada despesa registra moeda, taxa e valor convertido para a moeda-base do grupo (snapshot imutável). A taxa é sugerida por uma API de câmbio (com cache) e pode ser ajustada manualmente. Respeita as casas decimais de cada moeda (ISO 4217).
-- **Impacto no negócio:** Abre o público de viagens internacionais, o caso de uso de maior ticket e frequência. Reduz o atrito mais citado em apps concorrentes e diferencia o produto na proposta de "moedas diferentes".
-- **Preparação já feita no MVP:** valores em centavos inteiros e campo `currency` no grupo (ADR 0001).
+- **Problema:** No MVP, o plano de liquidação é sempre na moeda-base. Em viagens internacionais, parte do grupo prefere pagar na moeda local ou em outra moeda, e a conversão no dia do pagamento muda o valor real.
+- **Proposta:** Permitir que cada transferência seja paga em outra moeda, com a taxa do dia sugerida e registrada, e mostrar a diferença cambial frente ao valor planejado. Ampliar o catálogo de moedas (ARS, CLP e outras) e permitir taxas históricas por despesa em lote.
+- **Impacto no negócio:** Resolve a última etapa de atrito em viagens internacionais (o caso de maior ticket e frequência) e diferencia o produto de apps que só somam valores. Reduz disputas sobre "quanto vale esse valor hoje".
+- **Preparação já feita no MVP:** snapshot de taxa por despesa, catálogo de moedas com casas decimais e `ExchangeRateProvider` (ADR 0006).
 
 ### 2. Convites por link e notificações
 

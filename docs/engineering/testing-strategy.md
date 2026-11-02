@@ -4,8 +4,8 @@
 
 | Nível | O que cobre | Ferramenta | Onde |
 |---|---|---|---|
-| **Unitário (funções puras)** | `split.calculator`, `balance.calculator`, `debt-simplifier`, utilitários de dinheiro | Vitest ou Jest (definido na task #2) + `fast-check` | `*.spec.ts` ao lado do arquivo |
-| **Integração (use cases)** | Use cases com Prisma contra um PostgreSQL de teste (Docker) | Jest/Vitest | `*.integration.spec.ts` |
+| **Unitário (funções puras)** | `convertAmount`, `allocateProportionally`, `split.calculator`, `balance.calculator`, `debt-simplifier`, catálogo de moedas | Vitest ou Jest (definido na task #2) + `fast-check` | `*.spec.ts` ao lado do arquivo |
+| **Integração (use cases)** | Use cases com Prisma contra um PostgreSQL de teste (Docker); câmbio com `FakeExchangeRateProvider` | Jest/Vitest | `*.integration.spec.ts` |
 | **E2E da API** | Rotas HTTP completas: auth, grupos, despesas, saldo, fechamento | Jest + Supertest | `apps/api/test/` |
 | **E2E da interface** | Caminho feliz: cadastro → grupo → despesas → saldos → fechamento | Playwright | `apps/web/e2e/` |
 
@@ -18,11 +18,18 @@
 
 ## Testes de propriedade (`fast-check`)
 
-Para `calculateShares`:
+Para `convertAmount`:
 
-- A soma das partes é sempre igual ao total.
+- Resultado inteiro, `≥ 0` e monotônico em relação ao valor original e à taxa.
+- Taxa `1` com a mesma moeda devolve o valor original.
+- Os exemplos de `specs/06-currencies.md` (inclusive meio para cima e moedas sem decimais) passam.
+- Nunca usa `number` fracionário (o teste compara com o cálculo `BigInt` de referência).
+
+Para `allocateProportionally` e `calculateShares`:
+
+- A soma das partes é sempre igual ao total, **no valor original e no convertido**.
 - Toda parte é inteira e `≥ 0` (e `≥ 1` quando houver base suficiente).
-- `EQUAL`: a diferença entre a maior e a menor parte é no máximo 1 centavo.
+- `EQUAL`: a diferença entre a maior e a menor parte é no máximo 1 unidade mínima.
 - Mesmo input → mesmo output.
 
 Para `simplifyDebts`:

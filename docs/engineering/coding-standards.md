@@ -22,9 +22,10 @@ Complementa `docs/constitution.md`. O código é escrito em **inglês** (identif
 | Constantes | `UPPER_SNAKE_CASE` | `EXACT_SOLVER_MAX_PARTICIPANTS` |
 | Enums e tipos | `PascalCase`; valores de enum `UPPER_SNAKE_CASE` | `SplitType.EQUAL` |
 | Schemas Zod | `camelCase` terminando em `Schema`; tipo inferido com `PascalCase` | `createExpenseSchema` → `CreateExpenseInput` |
-| Campos monetários | sufixo `Cents` | `amountCents`, `netCents` |
+| Campos monetários | sufixo `Minor` (menor unidade da moeda); `original…` quando na moeda da despesa | `amountMinor`, `originalAmountMinor`, `netMinor` |
+| Taxa de câmbio | `exchangeRate`, sempre texto decimal | `"5.4325"` |
 | Campos de porcentagem | sufixo `BasisPoints` | `basisPoints` |
-| Tabelas/colunas no banco | mapeadas para `snake_case` com `@@map` / `@map` | `expense_shares.amount_cents` |
+| Tabelas/colunas no banco | mapeadas para `snake_case` com `@@map` / `@map` | `expense_shares.amount_minor` |
 
 ## Camadas — regras práticas
 
@@ -65,7 +66,7 @@ async create(
 
 1. **Zod na borda:** validar no controller; use cases confiam em dados tipados.
 2. **Sem `any`**; sem `as` para silenciar o compilador (exceto casos documentados).
-3. **Dinheiro:** nunca `parseFloat`, nunca `toFixed` para cálculo. Formatação só na UI.
+3. **Dinheiro:** nunca `parseFloat`, nunca `toFixed` para cálculo; conversão cambial só com `BigInt` (`convertAmount`). Formatação só na UI, com as casas do catálogo de moedas.
 4. **Early return** em vez de `else` aninhado; funções curtas e com nome que explica a intenção.
 5. **Comentários** explicam o porquê, não o quê. Sem código comentado.
 6. **Sem interfaces especulativas.** Ver constituição, seção 2.4.
