@@ -170,6 +170,8 @@ O seed cria o grupo **Weekend Trip** (moeda-base BRL) com Demo User, Ana e Bruno
 | Login | ![Login](docs/assets/login-desktop.png) | ![Login no celular](docs/assets/login-mobile.png) |
 | Cadastro | ![Cadastro](docs/assets/register-desktop.png) | ![Cadastro no celular](docs/assets/register-mobile.png) |
 | Lista de grupos | ![Grupos](docs/assets/groups-desktop.png) | ![Grupos no celular](docs/assets/groups-mobile.png) |
+| Novo grupo (validação em tempo real) | ![Novo grupo](docs/assets/new-group-desktop.png) | ![Novo grupo no celular](docs/assets/new-group-mobile.png) |
+| Participantes do grupo | ![Participantes](docs/assets/members-desktop.png) | ![Participantes no celular](docs/assets/members-mobile.png) |
 | Despesas (inclui a despesa em USD) | ![Despesas](docs/assets/expenses-desktop.png) | ![Despesas no celular](docs/assets/expenses-mobile.png) |
 | Saldos | ![Saldos](docs/assets/balances-desktop.png) | ![Saldos no celular](docs/assets/balances-mobile.png) |
 | Extrato do participante | ![Extrato](docs/assets/statement-desktop.png) | ![Extrato no celular](docs/assets/statement-mobile.png) |

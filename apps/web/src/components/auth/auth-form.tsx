@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fieldErrors, loginSchema, registerSchema } from '@/lib/auth/schemas';
@@ -91,14 +92,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       className="flex flex-col gap-4"
       aria-busy={pending}
     >
-      {serverError ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-danger-700 bg-danger-50 px-3 py-2 text-sm text-danger-700"
-        >
-          Erro: {serverError}
-        </div>
-      ) : null}
+      {serverError ? <Alert>{serverError}</Alert> : null}
       {mode === 'register' ? (
         <Input label="Nome" type="text" autoComplete="name" {...bind('name')} />
       ) : null}
@@ -113,17 +107,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
         label="Senha"
         type="password"
         autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+        hint={mode === 'register' ? 'Use de 8 a 72 caracteres.' : undefined}
         {...bind('password')}
       />
-      {mode === 'register' ? (
-        <p className="-mt-2 text-sm text-muted-foreground">Use de 8 a 72 caracteres.</p>
-      ) : null}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" size="lg" loading={pending}>
         {pending ? config.submitting : config.submit}
       </Button>
+
       <p className="text-center text-sm text-muted-foreground">
         {config.altText}{' '}
-        <Link href={config.altHref} className="font-semibold text-brand-700 underline">
+        <Link
+          href={config.altHref}
+          className="font-semibold text-link underline underline-offset-2"
+        >
           {config.altLabel}
         </Link>
       </p>

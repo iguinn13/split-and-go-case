@@ -3,8 +3,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Plus, Trash2 } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Avatar } from '@/components/ui/avatar';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { fieldClassName, Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { mutate } from '@/lib/groups/client';
 import { createGroupFormSchema, dropBlankMembers, pathErrors } from '@/lib/groups/schemas';
 import type { CurrencyOption } from '@/lib/groups/types';
@@ -27,6 +32,9 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
   );
   const [rows, setRows] = useState<MemberRow[]>([{ key: 1, name: '', email: '' }]);
   const [submitted, setSubmitted] = useState(false);
+  // Live validation: a field shows its error once it was left (blur) or after a submit attempt.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (id: string) => setTouched((current) => ({ ...current, [id]: true }));
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -38,12 +46,12 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
     members: filled.map(({ name: n, email }) => ({ name: n, email })),
   });
   const errors = result.success ? {} : pathErrors(result.error);
-  const show = (path: string) => (submitted ? errors[path] : undefined);
+  const show = (path: string, id = path) => (submitted || touched[id] ? errors[path] : undefined);
 
   // Errors are keyed by position in `filled`; map them back to the visible rows.
   const rowError = (row: MemberRow, field: 'name' | 'email') => {
     const index = filled.indexOf(row);
-    if (index >= 0) return show(`members.${index}.${field}`);
+    if (index >= 0) return show(`members.${index}.${field}`, `${row.key}.${field}`);
     return undefined;
   };
 
@@ -79,14 +87,7 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
       className="flex flex-col gap-4"
       aria-busy={pending}
     >
-      {serverError ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-danger-700 bg-danger-50 px-3 py-2 text-sm text-danger-700"
-        >
-          Erro: {serverError}
-        </div>
-      ) : null}
+      {serverError ? <Alert>{serverError}</Alert> : null}
 
       <Input
         id="group-name"
@@ -95,6 +96,7 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
         value={name}
         error={show('name')}
         onChange={(e) => setName(e.target.value)}
+        onBlur={() => touch('name')}
         autoComplete="off"
         maxLength={80}
       />
@@ -109,35 +111,34 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          onBlur={() => touch('description')}
           aria-invalid={show('description') ? true : undefined}
           aria-describedby={show('description') ? 'description-error' : undefined}
-          className="rounded-lg border border-line bg-surface px-3 py-2"
+          className={cn(
+            fieldClassName,
+            show('description') ? 'border-destructive-soft-foreground' : 'border-input',
+          )}
         />
         {show('description') ? (
-          <p id="description-error" className="text-sm text-danger-700">
+          <p
+            id="description-error"
+            className="text-sm font-medium text-destructive-soft-foreground"
+          >
             Erro: {show('description')}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="baseCurrency" className="text-sm font-medium">
-          Moeda-base
-        </label>
-        <select
+        <Select
           id="baseCurrency"
           name="baseCurrency"
+          label="Moeda-base"
           value={baseCurrency}
           onChange={(e) => setBaseCurrency(e.target.value)}
           aria-describedby="baseCurrency-hint"
-          className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2"
-        >
-          {currencies.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code} - {c.name}
-            </option>
-          ))}
-        </select>
+          options={currencies.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
+        />
         <p id="baseCurrency-hint" className="text-sm text-muted-foreground">
           Saldos e liquidação serão expressos nesta moeda. Não pode ser alterada depois.
         </p>
@@ -153,14 +154,32 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
           {rows.map((row, index) => (
             <li
               key={row.key}
-              className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3"
+              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
             >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Avatar name={row.name || '?'} size="sm" decorative />
+                  <span className="min-w-0 break-words text-sm font-semibold">
+                    {row.name.trim() || `Participante ${index + 1}`}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 aria-hidden />}
+                  onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))}
+                  aria-label={`Remover participante ${index + 1}`}
+                >
+                  Remover
+                </Button>
+              </div>
               <Input
                 id={`member-${row.key}-name`}
                 label={`Nome do participante ${index + 1}`}
                 value={row.name}
                 error={rowError(row, 'name')}
                 onChange={(e) => updateRow(row.key, { name: e.target.value })}
+                onBlur={() => touch(`${row.key}.name`)}
                 autoComplete="off"
                 maxLength={60}
               />
@@ -172,25 +191,21 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
                 value={row.email}
                 error={rowError(row, 'email')}
                 onChange={(e) => updateRow(row.key, { email: e.target.value })}
+                onBlur={() => touch(`${row.key}.email`)}
                 autoComplete="off"
               />
-              <Button
-                variant="secondary"
-                className="self-start"
-                onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))}
-                aria-label={`Remover participante ${index + 1}`}
-              >
-                Remover
-              </Button>
             </li>
           ))}
         </ul>
         {show('members') ? (
-          <p className="text-sm text-danger-700">Erro: {show('members')}</p>
+          <p className="text-sm font-medium text-destructive-soft-foreground">
+            Erro: {show('members')}
+          </p>
         ) : null}
         <Button
           variant="secondary"
           className="self-start"
+          icon={<Plus aria-hidden />}
           disabled={rows.length >= MAX_MEMBERS}
           onClick={() =>
             setRows((current) => [...current, { key: nextKey.current++, name: '', email: '' }])
@@ -200,16 +215,13 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
         </Button>
       </fieldset>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Criando grupo...' : 'Criar grupo'}
-        </Button>
-        <Link
-          href="/groups"
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:bg-brand-50"
-        >
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Link href="/groups" className={buttonVariants({ variant: 'secondary' })}>
           Cancelar
         </Link>
+        <Button type="submit" loading={pending}>
+          {pending ? 'Criando grupo...' : 'Criar grupo'}
+        </Button>
       </div>
     </form>
   );
