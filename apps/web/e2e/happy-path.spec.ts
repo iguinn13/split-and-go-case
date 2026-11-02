@@ -338,6 +338,6 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
   // --- The groups list shows the base currency straight from the list endpoint -------------------
   await page.goto('/groups');
   await expect(
-    page.getByRole('link', { name: /Viagem E2E/ }).getByText(/Moeda: BRL · 3 participantes/),
+    page.getByRole('link', { name: /Viagem E2E.*Moeda: BRL.*3 participantes/ }),
   ).toBeVisible();
 });
