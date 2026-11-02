@@ -70,7 +70,7 @@ async create(
 4. **Early return** em vez de `else` aninhado; funções curtas e com nome que explica a intenção.
 5. **Comentários** explicam o porquê, não o quê. Sem código comentado.
 6. **Sem interfaces especulativas.** Ver constituição, seção 2.4.
-7. **Imports** absolutos pelo alias `@/` dentro de cada app; nunca atravessar módulos pelo caminho do repository.
+7. **Imports:** na API (ESM, `NodeNext`) use caminhos relativos terminando em `.js`, sem alias; no front-end use o alias `@/`. Nunca atravessar módulos pelo caminho do repository.
 8. **Configuração** vem de variáveis de ambiente validadas por Zod na inicialização (`env.schema.ts`); o app não sobe com configuração inválida.
 9. **Logs** estruturados; nunca logar senha, hash ou token.
 
