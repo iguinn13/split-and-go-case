@@ -1,0 +1,56 @@
+# Estratégia de Testes
+
+## Pirâmide
+
+| Nível | O que cobre | Ferramenta | Onde |
+|---|---|---|---|
+| **Unitário (funções puras)** | `split.calculator`, `balance.calculator`, `debt-simplifier`, utilitários de dinheiro | Vitest ou Jest (definido na task #2) + `fast-check` | `*.spec.ts` ao lado do arquivo |
+| **Integração (use cases)** | Use cases com Prisma contra um PostgreSQL de teste (Docker) | Jest/Vitest | `*.integration.spec.ts` |
+| **E2E da API** | Rotas HTTP completas: auth, grupos, despesas, saldo, fechamento | Jest + Supertest | `apps/api/test/` |
+| **E2E da interface** | Caminho feliz: cadastro → grupo → despesas → saldos → fechamento | Playwright | `apps/web/e2e/` |
+
+## Prioridades
+
+1. **Funções puras:** cobertura de 100% das ramificações. É onde está o risco matemático.
+2. **Regras de autorização** (dono vs. participante vs. estranho).
+3. **Fluxo de fechamento** com concorrência (transação + lock).
+4. **Caminho feliz da UI.**
+
+## Testes de propriedade (`fast-check`)
+
+Para `calculateShares`:
+
+- A soma das partes é sempre igual ao total.
+- Toda parte é inteira e `≥ 0` (e `≥ 1` quando houver base suficiente).
+- `EQUAL`: a diferença entre a maior e a menor parte é no máximo 1 centavo.
+- Mesmo input → mesmo output.
+
+Para `simplifyDebts`:
+
+- Aplicar as transferências zera todos os saldos.
+- Nenhuma transferência é `≤ 0`, para si mesmo ou repetida no par `from → to`.
+- `|transferências| ≤ n − 1`, onde `n` é o número de saldos diferentes de zero.
+- No caminho exato (`n ≤ 16`), o resultado nunca é maior que o do guloso.
+- Mesmo input → mesmo output, independentemente da ordem de entrada.
+
+Para `calculateBalances`: a soma dos saldos é sempre `0`.
+
+## Casos obrigatórios (unitários)
+
+Todos os cenários de `docs/engineering/edge-cases.md` viram caso de teste, além dos exemplos das specs (`03` e `04`).
+
+## Dados de teste
+
+- Factories simples em `test/factories/` (sem biblioteca extra).
+- Banco de integração e2e: PostgreSQL via Docker Compose (`docker-compose.test.yml` ou perfil `test`), com migrations aplicadas e tabelas truncadas entre testes.
+
+## Critérios para uma task ir para Done
+
+1. Lint, typecheck e build sem erros.
+2. Testes novos e existentes verdes.
+3. Todos os critérios de aceite da issue verificados (e cobertos por teste quando aplicável).
+4. Revisão do `code-reviewer` aprovada.
+
+## CI
+
+Workflow `.github/workflows/ci.yml` (task #6): instala com pnpm (com cache), roda `lint`, `typecheck`, `test` e `build`, com serviço PostgreSQL para testes de integração.
