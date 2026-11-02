@@ -12,6 +12,8 @@ export default defineConfig({
         process.env['DATABASE_URL'] ?? 'postgresql://splitgo:splitgo@localhost:5432/splitgo',
       JWT_SECRET: process.env['JWT_SECRET'] ?? 'test-only-secret',
     },
+    globalSetup: ['test/support/global-setup.ts'],
+    setupFiles: ['test/support/no-network.setup.ts'],
     include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
   },
 });
