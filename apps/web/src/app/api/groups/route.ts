@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { apiFetch } from '@/lib/api';
 import { errorResponse, readJson } from '@/lib/auth/route-utils';
 import { createGroupFormSchema, toCreateGroupPayload } from '@/lib/groups/schemas';
+import { guardMutation } from '@/lib/http/guard';
 import { requireToken, unauthorized } from '@/lib/groups/route-helpers';
 import type { Group } from '@/lib/groups/types';
 
 export async function POST(request: Request) {
+  const blocked = guardMutation(request);
+  if (blocked) return blocked;
   const token = await requireToken();
   if (!token) return unauthorized();
   const parsed = createGroupFormSchema.safeParse(await readJson(request));

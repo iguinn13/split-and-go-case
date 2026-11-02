@@ -19,10 +19,23 @@ export function guardUuids(...values: string[]): NextResponse | null {
   return values.every(isUuid) ? null : invalidParam();
 }
 
+/**
+ * Host the browser used to reach the app. `Host` is authoritative; `X-Forwarded-Host` is only
+ * honoured when the deployment declares a trusted reverse proxy (`WEB_TRUST_FORWARDED_HOST=1`),
+ * because otherwise any client could pick the value the Origin is compared against.
+ */
+function requestHost(request: Request): string | null {
+  const forwarded =
+    process.env['WEB_TRUST_FORWARDED_HOST'] === '1'
+      ? request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+      : undefined;
+  return forwarded || request.headers.get('host');
+}
+
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
   if (origin === null) return true; // non-browser clients cannot ride the session cookie
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  const host = requestHost(request);
   try {
     return host !== null && new URL(origin).host === host;
   } catch {
@@ -52,6 +65,21 @@ export function guardMutation(
         { status: 415 },
       );
     }
+  }
+  return null;
+}
+
+/**
+ * Guard for safe (read-only) proxy handlers. They change nothing, so no Origin is required;
+ * browsers that declare a cross-site context (`Sec-Fetch-Site`) are refused so another site
+ * cannot spend the user's session on the API or the rate provider.
+ */
+export function guardRead(request: Request): NextResponse | null {
+  if (request.headers.get('sec-fetch-site') === 'cross-site') {
+    return NextResponse.json(
+      { code: 'FORBIDDEN', message: 'Você não tem permissão para fazer isso.' },
+      { status: 403 },
+    );
   }
   return null;
 }
