@@ -337,7 +337,7 @@ Fonte de verdade das tasks do Split&Go. Cada seção `### T-NN` é espelhada em 
 ### T-16 · Implementar plano de liquidação, fechamento do grupo e pagamento de transferências
 
 - **Área:** backend
-- **Título do PR:** `feat(settlements): add settlement plan, group closing and transfer payment`
+- **Título do PR:** `feat(settlements): add plan, group closing and transfer payment`
 - **Spec:** `docs/specs/04-balances-and-settlement.md` (RN-BAL-10 a RN-BAL-17, AC-BAL-09 a AC-BAL-14)
 - **Depende de:** #14, #15
 

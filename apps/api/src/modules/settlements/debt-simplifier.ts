@@ -38,6 +38,7 @@ const compareIds = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0
 function normalize(balances: readonly DebtBalance[]): DebtBalance[] {
   const seen = new Set<string>();
   let total = 0;
+  let totalAbs = 0;
   for (const { memberId, netMinor } of balances) {
     if (!Number.isSafeInteger(netMinor)) {
       throw new DebtSimplifierInputError(`Balance of ${memberId} must be a safe integer`);
@@ -47,6 +48,11 @@ function normalize(balances: readonly DebtBalance[]): DebtBalance[] {
     }
     seen.add(memberId);
     total += netMinor;
+    totalAbs += Math.abs(netMinor);
+    // Sums are accumulated in Number: beyond this bound they could silently lose precision.
+    if (totalAbs > Number.MAX_SAFE_INTEGER) {
+      throw new DebtSimplifierInputError('Sum of absolute balances exceeds the safe integer range');
+    }
   }
   if (total !== 0) {
     throw new DebtSimplifierInputError(`Balances must sum to zero, got ${total}`);
