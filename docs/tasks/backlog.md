@@ -453,7 +453,7 @@ Fonte de verdade das tasks do Split&Go. Cada seção `### T-NN` é espelhada em 
 - **Área:** infra
 - **Título do PR:** `chore: deploy the application`
 - **Spec:** `docs/architecture/plan.md` (seção 10)
-- **Depende de:** #3, #19
+- **Depende de:** #3, #19, #48, #49, #50, #51, #52, #53, #54, #55
 
 **História:** Como pessoa interessada, quero acessar o produto no ar sem precisar rodá-lo localmente.
 
@@ -485,3 +485,158 @@ Fonte de verdade das tasks do Split&Go. Cada seção `### T-NN` é espelhada em 
 - [ ] Cache em memória por par e data (TTL de 1 h) e timeout curto na chamada externa.
 - [ ] Falha, timeout ou moeda desconhecida pelo provedor retornam `503 EXCHANGE_RATE_UNAVAILABLE`, sem vazar detalhes.
 - [ ] Testes de integração com o provedor falso (sucesso, cache, falha) e e2e dos dois endpoints; nenhum teste depende da internet.
+
+---
+
+### T-48 · Endurecer o harness de testes da API e o provedor de câmbio
+
+- **Área:** backend
+- **Título do PR:** `fix(api): guard test db and harden the exchange rate provider`
+- **Spec:** `docs/engineering/testing-strategy.md`, `docs/specs/06-currencies.md`, `docs/architecture/decisions/0006-multi-currency-conversion.md`
+- **Depende de:** —
+
+**História:** Como time, quero que os testes nunca toquem um banco que não seja de teste e que a sugestão de câmbio seja robusta a respostas inesperadas do provedor.
+
+**Critérios de aceite:**
+
+- [ ] O setup global dos testes da API recusa rodar sem `DATABASE_URL` explícito e com host/nome de aparência local ou de teste; a URL padrão é definida em um só lugar e nada de `prisma migrate deploy` é executado contra outro banco.
+- [ ] O parser da taxa usa `JSON.parse` com reviver e `ctx.source` (Node 24) no lugar de regex: `rates` aninhado, chaves duplicadas e JSON inválido resultam em `503 EXCHANGE_RATE_UNAVAILABLE`, nunca em taxa errada; testes de regressão para esses casos.
+- [ ] `fetch` do provedor com `redirect: 'error'` e limite de tamanho do corpo; timeout atual mantido.
+- [ ] Cache de taxas com limite de tamanho e varredura de entradas expiradas; data limitada a uma faixa sensata; requisições simultâneas da mesma chave compartilham uma só chamada ao provedor.
+- [ ] Testes sem internet (provedor falso e servidor local) cobrindo cada item; nenhuma regressão nos testes existentes.
+
+---
+
+### T-49 · Expor moeda-base na lista de grupos e valor convertido no extrato
+
+- **Área:** backend
+- **Título do PR:** `feat(api): expose base currency and converted amount in responses`
+- **Spec:** `docs/specs/02-groups-and-members.md`, `docs/specs/03-expenses.md`, `docs/specs/05-settlement-dashboard.md` (RF-UI-12), `docs/architecture/api-contract.md`
+- **Depende de:** #48
+
+**História:** Como participante, quero ver a moeda-base de cada grupo na lista e o valor convertido em todas as linhas do extrato, sem requisições extras.
+
+**Critérios de aceite:**
+
+- [ ] `GET /groups` devolve `baseCurrency` em cada `GroupSummary`; mudança aditiva, sem quebrar clientes existentes.
+- [ ] A linha do extrato (`GET /groups/:id/members/:memberId/statement`) devolve `amountMinor`, o total convertido da despesa, calculado sem divergência de arredondamento em relação ao valor persistido; mudança aditiva.
+- [ ] `docs/architecture/api-contract.md` atualizado com os dois campos; testes e2e atualizados.
+- [ ] Spec atualizada com as decisões tomadas: RN/AC do dono do grupo não removível retornando `403 FORBIDDEN` (RN-GRP-08), AC-EXP-01 com `exchangeRate = "1.00000000"` (8 casas) e ADR 0003 mencionando `proxy.ts` no lugar de `middleware`.
+- [ ] A matriz de autorização ganha linhas de IDOR entre grupos (despesa, participante e transferência de outro grupo acessados pela URL do seu grupo).
+- [ ] Seção "Limitações conhecidas e decisões pendentes" do README atualizada para refletir o que foi resolvido.
+
+---
+
+### T-50 · Endurecer os Route Handlers da web e remover o N+1 da lista de grupos
+
+- **Área:** frontend
+- **Título do PR:** `fix(web): harden route handlers and remove groups list n+1`
+- **Spec:** `docs/architecture/decisions/0003-jwt-httpOnly-cookie.md`, `docs/specs/05-settlement-dashboard.md` (RF-UI-12)
+- **Depende de:** #49
+
+**História:** Como time, quero que todas as rotas de mutação da web tenham as mesmas defesas e que a interface use os novos campos da API.
+
+**Critérios de aceite:**
+
+- [ ] `guardMutation` e `guardUuids` (`apps/web/src/lib/http/guard.ts`) aplicados a todos os Route Handlers de mutação e de proxy (grupos, participantes, login, cadastro, logout, taxa de câmbio), com testes por handler.
+- [ ] `GET /api/auth/expired` não altera estado em GET (limpeza do cookie por método seguro ou página intermediária); sem logout forçado por link externo.
+- [ ] A lista de grupos usa `baseCurrency` do `GroupSummary` e não faz mais uma requisição por grupo.
+- [ ] Todas as linhas do extrato de despesas em moeda estrangeira mostram "original · taxa · convertido" usando `amountMinor` (RF-UI-12).
+- [ ] Campos do `Input` com `id` explícito, sem espaços, e `aria-describedby` correto nos erros.
+- [ ] Playwright e testes unitários atualizados e verdes.
+
+---
+
+### T-51 · Corrigir a leitura de separadores no campo de valor
+
+- **Área:** frontend
+- **Título do PR:** `fix(web): stop misreading thousands separators in amount input`
+- **Spec:** `docs/specs/03-expenses.md`, `docs/specs/06-currencies.md`, `docs/constitution.md` (dinheiro)
+- **Depende de:** #49
+
+**História:** Como participante, quero que o campo de valor nunca interprete errado o que digito ou colo, para não lançar uma despesa com valor 10 ou 1000 vezes menor ou maior.
+
+**Critérios de aceite:**
+
+- [ ] Em moeda de N casas decimais, um único separador seguido de mais de N dígitos é lido como separador de milhar; `1.234` e `25.000` em BRL/USD valem 1234 e 25000, nunca 1,23 nem 25,00.
+- [ ] Digitar tecla a tecla `1.234,56` resulta em R$ 1.234,56 (não R$ 12.356,00); a reformatação do campo não reinterpreta o valor já formatado.
+- [ ] Quando a entrada for ambígua ou tiver mais casas que a moeda permite, o campo mostra um aviso visível em vez de descartar dígitos em silêncio.
+- [ ] JPY e KRW continuam sem casas decimais; `1.234` vale 1234.
+- [ ] Testes unitários exatos (digitação e colagem: `1.234`, `1.234,56`, `1,234.56`, `1.000`, `25.000`, `1.234.567,89`) e mutações que os façam falhar; teste para valor original de exatamente 1e9 e 1e9+1 na mesma moeda.
+- [ ] Verificação no navegador a 360 px e 1280 px, comparando a prévia com o valor persistido.
+
+---
+
+### T-52 · Criar a fundação do novo design (shadcn/ui, tokens e componentes)
+
+- **Área:** frontend
+- **Título do PR:** `feat(web): add design system foundation with shadcn ui`
+- **Spec:** `docs/specs/05-settlement-dashboard.md` (princípios de UX), `docs/architecture/plan.md` (seção 7)
+- **Depende de:** #50, #51
+
+**História:** Como time, quero um sistema de design moderno e acessível, no padrão de mercado, para construir as telas sobre uma base consistente.
+
+**Critérios de aceite:**
+
+- [ ] shadcn/ui com Radix, `class-variance-authority` e `lucide-react` instalados em `apps/web`, com cada dependência justificada no PR.
+- [ ] Tokens no estilo Splitwise (paleta verde, tipografia, espaçamento, raios, sombras, estados de foco e erro) centralizados em `globals.css`; contraste mínimo AA verificado.
+- [ ] Componentes base reconstruídos em `apps/web/src/components/ui/`: botão, input com rótulo, select, cartão, diálogo, abas, toast, badge, avatar, skeleton, estado vazio e estado de erro; os `data-testid` e as props usados pelos testes e2e são mantidos.
+- [ ] Layout base responsivo (360 px+) com cabeçalho, navegação e área de conteúdo; foco visível e navegação por teclado em todos os componentes.
+- [ ] Nenhuma regra de negócio alterada; testes unitários, Playwright, lint, typecheck e build verdes.
+
+---
+
+### T-53 · Redesenhar autenticação, layout e telas de grupos
+
+- **Área:** frontend
+- **Título do PR:** `feat(web): redesign auth, layout and groups screens`
+- **Spec:** `docs/specs/01-auth.md`, `docs/specs/02-groups-and-members.md`, `docs/specs/05-settlement-dashboard.md`
+- **Depende de:** #52
+
+**História:** Como usuário, quero telas de entrada e de grupos modernas e intuitivas, no padrão de apps de divisão de despesas.
+
+**Critérios de aceite:**
+
+- [ ] Telas de login e cadastro redesenhadas (formulário claro, mensagens de erro em pt-BR, estado de carregamento), mantendo a sessão em cookie `httpOnly`.
+- [ ] Lista de grupos com cartões de resumo (nome, moeda-base, participantes, situação), estado vazio com chamada para criar e estado de erro com nova tentativa.
+- [ ] Criação de grupo e gestão de participantes redesenhadas, com avatar/iniciais, validação em tempo real e mensagem amigável para `MEMBER_HAS_EXPENSES`.
+- [ ] Funciona em 360 px e em desktop, com teclado e leitor de tela; capturas de tela revisadas.
+- [ ] Teste Playwright e capturas do README atualizados; nenhuma regra de negócio alterada.
+
+---
+
+### T-54 · Redesenhar o detalhe do grupo, a lista e o formulário de despesas
+
+- **Área:** frontend
+- **Título do PR:** `feat(web): redesign group detail, expenses list and form`
+- **Spec:** `docs/specs/03-expenses.md`, `docs/specs/05-settlement-dashboard.md`, `docs/specs/06-currencies.md`
+- **Depende de:** #53
+
+**História:** Como participante, quero ver o grupo e lançar despesas de forma rápida e clara, com a lista densa e o valor em destaque.
+
+**Critérios de aceite:**
+
+- [ ] Detalhe do grupo com resumo no topo (moeda-base, situação, total) e abas visíveis em 360 px, incluindo a aba Quitação sem corte.
+- [ ] Lista de despesas com avatar, descrição, "quem pagou" e valor à direita; despesas em moeda estrangeira mostram original, taxa e convertido; paginação e estados vazio, carregando e erro.
+- [ ] Formulário de despesa redesenhado (mobile-first, botão de nova despesa em destaque), mantendo a máscara, a prévia em tempo real, a taxa sugerida e o aviso quando falha, e a proteção contra envio duplo.
+- [ ] Retry do erro do grupo volta para a aba em que o usuário estava; mensagens informativas sem o prefixo "Erro:".
+- [ ] Funciona em 360 px e em desktop; Playwright e capturas atualizados; valores na tela conferidos contra o banco.
+
+---
+
+### T-55 · Redesenhar saldos, extrato e quitação
+
+- **Área:** frontend
+- **Título do PR:** `feat(web): redesign balances, statement and settlement screens`
+- **Spec:** `docs/specs/04-balances-and-settlement.md`, `docs/specs/05-settlement-dashboard.md`
+- **Depende de:** #54
+
+**História:** Como grupo, queremos ver com clareza quem recebe, quem deve e quem paga quem, e fechar o acerto com segurança.
+
+**Critérios de aceite:**
+
+- [ ] Saldos com destaque "você recebe / você deve / quitado" (texto, sinal e cor), cartões por participante e acesso ao extrato.
+- [ ] Extrato individual com linhas legíveis, saldo acumulado e valor convertido em todas as linhas de moeda estrangeira.
+- [ ] Quitação com frases claras do plano, resumo "x de y pagas", diálogo de confirmação ao fechar, indicadores de status com texto e ícone.
+- [ ] O foco do teclado é movido para um destino útil depois de fechar o grupo ou marcar uma transferência como paga, com anúncio para leitores de tela.
+- [ ] Funciona em 360 px e em desktop; Playwright e capturas do README atualizados; valores conferidos contra recomputação independente.
