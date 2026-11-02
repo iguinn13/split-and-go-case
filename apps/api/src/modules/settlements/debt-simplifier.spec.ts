@@ -243,4 +243,17 @@ describe('simplifyDebts performance', () => {
     expect(plan.length).toBeLessThanOrEqual(49);
     expect(elapsed).toBeLessThan(1000);
   });
+
+  it('rejects inputs whose sum of absolute balances exceeds the safe integer range', () => {
+    const half = Math.floor(Number.MAX_SAFE_INTEGER / 2) + 1;
+    const balances = bal({ a: half, b: -half });
+    expect(() => simplifyDebts(balances)).toThrow(DebtSimplifierInputError);
+    expect(() => simplifyDebtsGreedy(balances)).toThrow(DebtSimplifierInputError);
+  });
+
+  it('accepts a sum of absolute balances exactly at the safe integer limit', () => {
+    const half = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+    const plan = simplifyDebts(bal({ a: half, b: -half }));
+    expect(plan).toEqual([{ from: 'b', to: 'a', amountMinor: half }]);
+  });
 });
