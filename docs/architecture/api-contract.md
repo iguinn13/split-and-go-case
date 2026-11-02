@@ -21,6 +21,8 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 
 | HTTP | `code` | Quando |
 |---|---|---|
+| 400 | `BAD_REQUEST` | Requisição malformada (ex.: JSON inválido) |
+| 404 | `NOT_FOUND` | Rota inexistente |
 | 401 | `UNAUTHORIZED` | Token ausente, inválido ou expirado |
 | 401 | `INVALID_CREDENTIALS` | Login com e-mail ou senha incorretos |
 | 403 | `FORBIDDEN` | Autenticado, mas sem permissão (ex.: não é dono) |
