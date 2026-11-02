@@ -10,6 +10,7 @@ export default defineConfig({
     env: {
       DATABASE_URL:
         process.env['DATABASE_URL'] ?? 'postgresql://splitgo:splitgo@localhost:5432/splitgo',
+      JWT_SECRET: process.env['JWT_SECRET'] ?? 'test-only-secret',
     },
     include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
   },

@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { z } from 'zod';
+import { Public } from '../src/common/auth/public.decorator.js';
 import { AppModule } from '../src/app.module.js';
 import { AppError } from '../src/common/errors/app-error.js';
 import type { ErrorResponse } from '../src/common/errors/error-response.js';
@@ -11,6 +12,7 @@ import { ZodValidationPipe } from '../src/common/zod/zod-validation.pipe.js';
 
 const bodySchema = z.object({ name: z.string().min(1) });
 
+@Public()
 @Controller('probe')
 class ProbeController {
   @Post()
