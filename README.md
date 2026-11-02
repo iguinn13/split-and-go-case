@@ -20,10 +20,11 @@ Gestão e rateio inteligente de despesas em grupo. Lance os gastos de uma viagem
 
 1. **Grupos e participantes:** crie um grupo com vários participantes (com ou sem conta).
 2. **Despesas flexíveis:** uma pessoa paga, N pessoas dividem. Rateio **igualitário** (ex.: R$ 100 / 4), por **porcentagem** ou por **valor fixo**.
-3. **Simplificação de saldo:** o sistema calcula quem deve a quem e minimiza as transferências. Se A deve 50 a B e B deve 50 a C, o plano sugere que A pague 50 direto a C.
-4. **Painel de quitação:** extrato individual de cada participante e plano final de liquidação, com fechamento do grupo e acompanhamento dos pagamentos.
+3. **Moedas diferentes:** cada grupo tem uma moeda-base; cada despesa pode ser lançada em outra moeda, com a taxa sugerida automaticamente (e editável) e registrada na despesa.
+4. **Simplificação de saldo:** o sistema calcula quem deve a quem e minimiza as transferências. Se A deve 50 a B e B deve 50 a C, o plano sugere que A pague 50 direto a C.
+5. **Painel de quitação:** extrato individual de cada participante e plano final de liquidação, com fechamento do grupo e acompanhamento dos pagamentos.
 
-Escopo do MVP: valores em **BRL**; login por e-mail e senha. Ver [`docs/specs/00-product-overview.md`](docs/specs/00-product-overview.md).
+Escopo do MVP: **multi-moeda** (moeda-base por grupo, despesas em 10 moedas com taxa de câmbio registrada) e login por e-mail e senha. Ver [`docs/specs/00-product-overview.md`](docs/specs/00-product-overview.md).
 
 ## Arquitetura
 
@@ -42,16 +43,20 @@ flowchart LR
         direction TB
         ctrl["Controllers<br/>validação Zod"]
         uc["Use Cases"]
-        calc["Calculators (funções puras)<br/>split · balance · debt-simplifier"]
+        calc["Calculators (funções puras)<br/>money · split · balance · debt-simplifier"]
         repo["Repositories / Services"]
         prisma["Prisma Client"]
         ctrl --> uc
+        provider["ExchangeRateProvider<br/>(cache em memória)"]
         uc --> calc
         uc --> repo
+        uc --> provider
         repo --> prisma
     end
 
     db[("PostgreSQL")]
+    fx(["API de câmbio<br/>BCE via Frankfurter"])
+    provider -->|"sugestão de taxa"| fx
 
     user -->|HTTPS| pages
     pages --> bff
@@ -90,10 +95,10 @@ Controller  →  Use Case  →  Repository / Service
  (HTTP/Zod)    (orquestra)    (dados / integrações)
 ```
 
-- Módulos: `auth`, `users`, `groups`, `expenses`, `balances`, `settlements`.
+- Módulos: `auth`, `users`, `groups`, `currencies`, `exchange-rates`, `expenses`, `balances`, `settlements`.
 - As regras complexas (rateio com resto de centavos, saldo e simplificação de dívidas) ficam em **funções puras e testáveis** (`*.calculator.ts`, `debt-simplifier.ts`), sem acesso a banco. Os use cases apenas orquestram.
-- Interfaces só quando há necessidade real; hoje nenhuma é necessária.
-- Dinheiro sempre em **centavos inteiros**; porcentagem em **basis points**. Nunca ponto flutuante.
+- Interfaces só quando há necessidade real; hoje apenas `ExchangeRateProvider` (fronteira externa do câmbio, com implementação falsa nos testes).
+- Dinheiro sempre em **inteiros na menor unidade da moeda** (centavos em BRL, ienes em JPY); porcentagem em **basis points**; taxa de câmbio em texto decimal convertido com `BigInt`. Nunca ponto flutuante.
 
 Detalhes: [`docs/architecture/plan.md`](docs/architecture/plan.md), [`data-model.md`](docs/architecture/data-model.md), [`api-contract.md`](docs/architecture/api-contract.md) e os [ADRs](docs/architecture/decisions/).
 
@@ -109,7 +114,8 @@ Detalhes: [`docs/architecture/plan.md`](docs/architecture/plan.md), [`data-model
 | Qualidade | **ESLint + Prettier**, Vitest/Jest, Playwright | Padronização e testes em todos os níveis. |
 | Infra local | **Docker Compose** | Um comando sobe banco, API e web. |
 | CI | **GitHub Actions** | Lint, typecheck, testes e build a cada PR. |
-| Fila / cache | Não usados no MVP | Os cálculos levam milissegundos (ADR 0005). |
+| Câmbio | Frankfurter (taxas do BCE) | Sugestão gratuita de taxa por data; o usuário confirma ou edita (ADR 0006). |
+| Fila / cache | Sem fila; cache em memória só para taxas | Os cálculos levam milissegundos (ADR 0005). |
 
 ## Como rodar localmente
 
@@ -158,14 +164,15 @@ Exemplo: saldos `A=+5, B=−3, C=−2, D=+4, E=−4` geram **3** transferências
 
 ## Edge cases
 
-Os principais cenários de borda e como são tratados (lista completa de 18 em [`docs/engineering/edge-cases.md`](docs/engineering/edge-cases.md)):
+Os principais cenários de borda e como são tratados (lista completa em [`docs/engineering/edge-cases.md`](docs/engineering/edge-cases.md)):
 
 | Cenário | Tratamento |
 |---|---|
 | **Resto de centavos** (R$ 100 / 3) | Divisão em centavos inteiros; o resto é distribuído 1 centavo por vez em ordem determinística: 33,34 · 33,33 · 33,33. A soma é sempre o total. |
 | **Porcentagens ou valores fixos que não fecham** | Rejeitados com `422` (`SPLIT_PERCENTAGE_SUM_INVALID`, `SPLIT_FIXED_SUM_INVALID`); a interface mostra quanto falta. |
 | **Pagador fora do rateio** | Permitido. O saldo é `pago − devido`, então ele fica com o crédito integral. |
-| **Moeda e precisão** | O MVP opera em BRL com valores inteiros em centavos; fração de centavo e outras moedas são rejeitadas. O campo `currency` já existe para a V2 (câmbio por despesa). |
+| **Moedas diferentes** (US$ 100 em grupo BRL) | A despesa guarda moeda, valor original, taxa e valor convertido (snapshot imutável, em `BigInt`, meio para cima). O rateio é feito nas duas moedas com a mesma regra de maior resto, então as somas fecham exato. A taxa é sugerida pelo BCE e editável; se o provedor cair, o usuário informa a taxa. |
+| **Moedas sem casas decimais** (JPY, KRW) | O catálogo de moedas define as casas decimais; os valores são inteiros na menor unidade (¥ 5.000 = `5000`) e a interface não aceita decimais nelas. |
 | **Dívidas circulares** | O plano parte do saldo líquido, então o ciclo A→B→C→A se anula e o plano é vazio. |
 | **Fechamento concorrente** | Fechar o grupo e lançar despesa travam a linha do grupo na transação: uma despesa entra no plano ou é rejeitada. |
 
@@ -173,7 +180,7 @@ Os principais cenários de borda e como são tratados (lista completa de 18 em [
 
 **Melhorias de negócio**
 
-1. **Multi-moeda com câmbio por despesa:** abre o público de viagens internacionais, o caso de maior ticket e frequência.
+1. **Liquidação em múltiplas moedas e câmbio no dia do pagamento:** o plano passa a respeitar a moeda em que cada pessoa prefere pagar, reduzindo perdas de câmbio.
 2. **Convites por link e notificações:** aumenta ativação e retenção com loop viral e acelera a quitação com lembretes.
 3. **Pagamento integrado (Pix) e conciliação:** fecha o ciclo do produto e abre uma linha de receita.
 
