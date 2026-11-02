@@ -8,9 +8,19 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   error?: string;
   /** Extra description ids (for example a hint paragraph), merged with the error id. */
   describedBy?: string;
+  /** Announce the error to screen readers as soon as it appears (live validation). */
+  announceError?: boolean;
 }
 
-export function Input({ label, error, id, className = '', describedBy, ...props }: InputProps) {
+export function Input({
+  label,
+  error,
+  id,
+  className = '',
+  describedBy,
+  announceError,
+  ...props
+}: InputProps) {
   const aria = fieldAria(id, Boolean(error), describedBy);
   return (
     <div className="flex flex-col gap-1">
@@ -25,7 +35,11 @@ export function Input({ label, error, id, className = '', describedBy, ...props 
         {...props}
       />
       {error ? (
-        <p id={aria.errorId} className="text-sm text-danger-700">
+        <p
+          id={aria.errorId}
+          role={announceError ? 'alert' : undefined}
+          className="text-sm text-danger-700"
+        >
           Erro: {error}
         </p>
       ) : null}

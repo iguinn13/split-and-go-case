@@ -284,7 +284,7 @@ O que **não** está implementado e o que ainda aguarda decisão humana. Os pont
 
 | # | Tema | Comportamento atual | Onde ver |
 |---|---|---|---|
-| e | Entrada de valor no formulário web | Um único separador é lido como decimal: colar `1.234` em moeda de 2 casas vira 1,23 e digitar `1.234,56` vira R$ 12.356,00. Limitação conhecida. | `apps/web/src/lib/expenses/money-input.ts` |
+| e | Entrada de valor no formulário web | **Resolvida (T-51), regra pendente de aprovação humana.** O campo guarda o texto digitado e o lê com a moeda selecionada: um único separador seguido de exatamente 3 dígitos (mais casas que a moeda) é milhar (`1.234` = 1234, com a dica "Lido como R$ 1.234,00"); seguido de 1 a N dígitos é decimal; JPY/KRW só aceitam separadores de milhar iguais; espaço só vale como milhar (`1 234`); só o símbolo da moeda selecionada é aceito. Casas a mais, ambiguidades, negativos, letras e espaços soltos mostram um aviso e desabilitam o Salvar. Regras completas em `docs/specs/03-expenses.md`. | `apps/web/src/lib/expenses/money-input.ts` |
 | i | Formatação do iene | A interface mostra `JP¥ 5.000`; AC-UI-10 diz `¥ 5.000`. | `apps/web/src/lib/money/format-money.ts`, `docs/specs/05-settlement-dashboard.md` |
 | j | Títulos de PR e escopos do commitlint | O escopo `exchange-rates` não está no `scope-enum`; por isso o título da T-23 usa o escopo `api` e o da T-16 foi encurtado para caber em 72 caracteres (backlog já atualizado). | `commitlint.config.mjs`, `docs/tasks/backlog.md` |
 | k | Deploy (task #22) | Pendente; ver acima. | `docs/tasks/backlog.md` (T-22) |

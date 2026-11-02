@@ -59,6 +59,8 @@ async function readMemberIds(page: Page): Promise<Record<Name, string>> {
 interface ExpenseInput {
   description: string;
   amount: string; // as typed, pt-BR
+  /** Also types '1.234,50' key by key first and checks the formatted preview (issue #51). */
+  maskCheck?: boolean;
   payer: Name;
   split:
     | { type: 'EQUAL' }
@@ -136,7 +138,12 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
     if (currency !== 'BRL') {
       await page.getByLabel('Moeda', { exact: true }).selectOption(currency);
     }
-    await page.getByLabel(`Valor (${currency})`, { exact: true }).fill(input.amount);
+    const amountField = page.getByLabel(`Valor (${currency})`, { exact: true });
+    if (input.maskCheck) {
+      await amountField.pressSequentially('1.234,50');
+      await expectMoney(page.getByTestId('amount-formatted'), 123450n);
+    }
+    await amountField.fill(input.amount);
     await page.getByLabel('Pago por').selectOption({ label: input.payer });
 
     if (currency !== 'BRL') {
@@ -193,7 +200,13 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
 
   // --- 1. EQUAL: R$ 100,00 / 3 leaves one extra cent (lowest member id) ----------------------
   await addExpense(
-    { description: 'Jantar', amount: '100,00', payer: 'Ana', split: { type: 'EQUAL' } },
+    {
+      description: 'Jantar',
+      amount: '100,00',
+      maskCheck: true,
+      payer: 'Ana',
+      split: { type: 'EQUAL' },
+    },
     { originalMinor: 10000n, convertedMinor: 10000n, weights: everyone(() => 1n) },
   );
 
