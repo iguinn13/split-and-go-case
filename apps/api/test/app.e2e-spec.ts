@@ -48,9 +48,9 @@ describe('API base (e2e)', () => {
     await app.close();
   });
 
-  it('GET /health returns 200 { status: "ok" }', async () => {
+  it('GET /health returns 200 with database up', async () => {
     const res = await request(server()).get('/health').expect(200);
-    expect(res.body).toEqual({ status: 'ok' });
+    expect(res.body).toEqual({ status: 'ok', database: 'up' });
   });
 
   it('returns 422 VALIDATION_ERROR with details', async () => {
