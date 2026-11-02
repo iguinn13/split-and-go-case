@@ -65,7 +65,7 @@ export default async function GroupsPage() {
                     {group.status === 'OPEN' ? 'Aberto' : 'Fechado'}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Moeda: {group.baseCurrency} · {group.memberCount}{' '}
                   {group.memberCount === 1 ? 'participante' : 'participantes'}
                 </p>

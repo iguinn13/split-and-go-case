@@ -57,7 +57,7 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
     <div className="flex flex-col gap-4">
       {newButton && data.items.length > 0 ? <div className="flex">{newButton}</div> : null}
       {!closed && group.members.length < 2 ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Adicione pelo menos 2 participantes para lançar despesas.
         </p>
       ) : null}
@@ -95,7 +95,7 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="break-words font-medium">{expense.description}</p>
-                    <p className="text-sm text-muted">
+                    <p className="text-sm text-muted-foreground">
                       Pago por {names.get(expense.paidByMemberId) ?? 'participante removido'} em{' '}
                       {formatDate(expense.occurredOn)}
                     </p>
@@ -105,7 +105,7 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
                   </p>
                 </div>
                 {foreign ? (
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     {conversionLine(
                       {
                         currency: expense.currency,
@@ -142,7 +142,7 @@ export async function ExpensesPanel({ group, userId, page }: Props) {
           ) : (
             <span />
           )}
-          <span className="text-sm text-muted">
+          <span className="text-sm text-muted-foreground">
             Página {page} de {lastPage}
           </span>
           {page < lastPage ? (

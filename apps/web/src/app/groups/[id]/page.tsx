@@ -1,9 +1,11 @@
+import { HandCoins, Receipt, Scale, Users } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BalancesPanel } from '@/components/balances/balances-panel';
 import { ExpensesPanel } from '@/components/expenses/expenses-panel';
 import { MembersPanel } from '@/components/groups/members-panel';
 import { SettlementPanel } from '@/components/settlement/settlement-panel';
+import { NavTabs } from '@/components/ui/nav-tabs';
 import { ErrorState } from '@/components/ui/error-state';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
@@ -11,10 +13,10 @@ import { pageQuerySchema } from '@/lib/expenses/schemas';
 import type { CurrentUser, Group } from '@/lib/groups/types';
 
 const TABS = [
-  { id: 'expenses', label: 'Despesas' },
-  { id: 'balances', label: 'Saldos' },
-  { id: 'members', label: 'Participantes' },
-  { id: 'settlement', label: 'Quitação' },
+  { id: 'expenses', label: 'Despesas', icon: <Receipt aria-hidden /> },
+  { id: 'balances', label: 'Saldos', icon: <Scale aria-hidden /> },
+  { id: 'members', label: 'Participantes', icon: <Users aria-hidden /> },
+  { id: 'settlement', label: 'Quitação', icon: <HandCoins aria-hidden /> },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -66,12 +68,12 @@ export default async function GroupPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/groups" className="text-sm font-semibold text-brand-700 underline">
+        <Link href="/groups" className="text-sm font-semibold text-link underline">
           Voltar aos grupos
         </Link>
         <h1 className="mt-1 break-words text-2xl font-bold">{group.name}</h1>
-        {group.description ? <p className="text-muted">{group.description}</p> : null}
-        <p className="mt-1 text-sm text-muted">
+        {group.description ? <p className="text-muted-foreground">{group.description}</p> : null}
+        <p className="mt-1 text-sm text-muted-foreground">
           Moeda-base: {group.baseCurrency} · {closed ? 'Fechado' : 'Aberto'}
         </p>
       </div>
@@ -85,25 +87,16 @@ export default async function GroupPage({
         </div>
       ) : null}
 
-      <nav aria-label="Seções do grupo" className="-mx-1 overflow-x-auto">
-        <ul className="flex gap-1 border-b border-line px-1">
-          {TABS.map((t) => (
-            <li key={t.id}>
-              <Link
-                href={`${base}?tab=${t.id}`}
-                aria-current={t.id === tab ? 'page' : undefined}
-                className={`inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-semibold ${
-                  t.id === tab
-                    ? 'border-brand-600 text-brand-700'
-                    : 'border-transparent text-muted hover:text-ink'
-                }`}
-              >
-                {t.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <NavTabs
+        label="Seções do grupo"
+        activeId={tab}
+        items={TABS.map((t) => ({
+          id: t.id,
+          label: t.label,
+          href: `${base}?tab=${t.id}`,
+          icon: t.icon,
+        }))}
+      />
 
       {tab === 'members' ? (
         <MembersPanel

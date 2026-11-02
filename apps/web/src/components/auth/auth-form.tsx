@@ -116,12 +116,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {...bind('password')}
       />
       {mode === 'register' ? (
-        <p className="-mt-2 text-sm text-muted">Use de 8 a 72 caracteres.</p>
+        <p className="-mt-2 text-sm text-muted-foreground">Use de 8 a 72 caracteres.</p>
       ) : null}
       <Button type="submit" disabled={pending}>
         {pending ? config.submitting : config.submit}
       </Button>
-      <p className="text-center text-sm text-muted">
+      <p className="text-center text-sm text-muted-foreground">
         {config.altText}{' '}
         <Link href={config.altHref} className="font-semibold text-brand-700 underline">
           {config.altLabel}

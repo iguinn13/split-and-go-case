@@ -61,7 +61,7 @@ export async function ExpenseFormPage({
       <div>
         {back}
         <h1 className="mt-1 text-2xl font-bold">{expense ? 'Editar despesa' : 'Nova despesa'}</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           {group.name} · Moeda-base: {group.baseCurrency}
         </p>
       </div>

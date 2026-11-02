@@ -41,7 +41,7 @@ export async function BalancesPanel({ groupId }: { groupId: string }) {
   return (
     <div className="flex flex-col gap-3">
       {noActivity ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Ainda não há despesas lançadas: todos os participantes estão quitados.
         </p>
       ) : null}
@@ -56,7 +56,7 @@ export async function BalancesPanel({ groupId }: { groupId: string }) {
               >
                 <span className="min-w-0">
                   <span className="block break-words font-medium">{b.name}</span>
-                  <span className="block text-sm text-muted">
+                  <span className="block text-sm text-muted-foreground">
                     Pagou {formatMoney(b.paidMinor, data.currency)} · Parte{' '}
                     {formatMoney(b.owedMinor, data.currency)}
                   </span>

@@ -46,7 +46,7 @@ export async function SettlementPanel({ groupId, isOwner }: { groupId: string; i
         <>
           <div className="rounded-card border border-line bg-surface p-4">
             <p className="font-semibold">{transferCountLabel(plan.transferCount)}</p>
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               {totalMovedLabel(plan.totalMovedMinor, plan.currency)}
             </p>
             {closed ? (
@@ -93,13 +93,13 @@ export async function SettlementPanel({ groupId, isOwner }: { groupId: string; i
       {!closed && isOwner ? (
         <div className="flex flex-col items-start gap-1">
           <CloseGroupButton groupId={groupId} />
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Fechar congela o grupo e fixa este plano. Não é possível reabrir.
           </p>
         </div>
       ) : null}
       {!closed && !isOwner ? (
-        <p className="text-sm text-muted">Somente o dono do grupo pode fechá-lo.</p>
+        <p className="text-sm text-muted-foreground">Somente o dono do grupo pode fechá-lo.</p>
       ) : null}
     </div>
   );

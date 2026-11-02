@@ -138,14 +138,14 @@ export function CreateGroupForm({ currencies }: { currencies: CurrencyOption[] }
             </option>
           ))}
         </select>
-        <p id="baseCurrency-hint" className="text-sm text-muted">
+        <p id="baseCurrency-hint" className="text-sm text-muted-foreground">
           Saldos e liquidação serão expressos nesta moeda. Não pode ser alterada depois.
         </p>
       </div>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="text-sm font-medium">Participantes</legend>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Você entra no grupo automaticamente como dono. Adicione os demais participantes agora ou
           depois.
         </p>

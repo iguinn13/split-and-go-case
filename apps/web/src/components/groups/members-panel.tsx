@@ -95,7 +95,9 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
                     </span>
                   ) : null}
                 </p>
-                <p className="break-all text-sm text-muted">{member.email ?? 'Sem e-mail'}</p>
+                <p className="break-all text-sm text-muted-foreground">
+                  {member.email ?? 'Sem e-mail'}
+                </p>
               </div>
               {canEdit && !isGroupOwner ? (
                 <Button
@@ -146,7 +148,9 @@ export function MembersPanel({ groupId, ownerId, members, isOwner, closed }: Pro
       ) : null}
 
       {!isOwner && !closed ? (
-        <p className="text-sm text-muted">Somente o dono do grupo pode gerenciar participantes.</p>
+        <p className="text-sm text-muted-foreground">
+          Somente o dono do grupo pode gerenciar participantes.
+        </p>
       ) : null}
     </div>
   );
