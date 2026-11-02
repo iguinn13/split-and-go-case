@@ -1,8 +1,8 @@
-# ADR 0005 — Sem fila e sem cache no MVP
+# ADR 0005 — Sem fila e sem cache distribuído no MVP
 
 - **Status:** Aceita
 - **Contexto:** Filas e caches só se justificam quando há trabalho assíncrono, picos de carga ou leituras caras. O MVP calcula saldo e plano sob demanda.
-- **Decisão:** Não usar fila de mensagens nem cache distribuído. Saldos e plano são calculados na requisição a partir das despesas; o plano é persistido apenas no fechamento do grupo.
+- **Decisão:** Não usar fila de mensagens nem cache distribuído. A única exceção é um cache **em memória** (TTL 1 h) para a sugestão de taxa de câmbio, para não repetir chamadas ao provedor externo (ADR 0006). Saldos e plano são calculados na requisição a partir das despesas; o plano é persistido apenas no fechamento do grupo.
 - **Análise de custo:**
   - Saldo: leitura de até ~1.000 despesas e suas partes, uma passada `O(partes)`.
   - Plano: `O(2ⁿ · n)` com `n ≤ 16` (≈ 1 milhão de operações) ou `O(n log n)` acima disso.

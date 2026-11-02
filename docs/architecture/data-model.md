@@ -1,6 +1,6 @@
 # Modelo de Dados
 
-Banco: PostgreSQL. ORM: Prisma. Todo dinheiro em **centavos inteiros**; porcentagem em **basis points**.
+Banco: PostgreSQL. ORM: Prisma. Todo dinheiro em **inteiros na menor unidade da moeda** (`...Minor`); porcentagem em **basis points**; taxa de câmbio em `Decimal(18,8)`.
 
 ## ERD
 
@@ -29,7 +29,7 @@ erDiagram
         uuid id PK
         string name
         string description
-        string currency "BRL"
+        string baseCurrency "BRL (padrão), imutável"
         enum status "OPEN | CLOSED"
         uuid ownerId FK
         datetime closedAt
@@ -47,8 +47,11 @@ erDiagram
         uuid id PK
         uuid groupId FK
         string description
-        int amountCents
+        int amountMinor "convertido, na moeda-base"
         uuid paidByMemberId FK
+        string currency "moeda da despesa"
+        int originalAmountMinor "na moeda da despesa"
+        decimal exchangeRate "snapshot, 8 casas"
         enum splitType "EQUAL | PERCENTAGE | FIXED"
         date occurredOn
         uuid createdByUserId FK
@@ -59,7 +62,8 @@ erDiagram
         uuid id PK
         uuid expenseId FK
         uuid memberId FK
-        int amountCents
+        int originalAmountMinor "na moeda da despesa"
+        int amountMinor "na moeda-base"
         int basisPoints "nullable, só PERCENTAGE"
     }
     SETTLEMENT_TRANSFER {
@@ -67,7 +71,7 @@ erDiagram
         uuid groupId FK
         uuid fromMemberId FK
         uuid toMemberId FK
-        int amountCents
+        int amountMinor
         enum status "PENDING | PAID"
         datetime paidAt
         datetime createdAt
@@ -120,7 +124,7 @@ model Group {
   id          String      @id @default(uuid()) @db.Uuid
   name        String
   description String?
-  currency    String      @default("BRL")
+  baseCurrency String     @default("BRL") // moeda-base, imutável
   status      GroupStatus @default(OPEN)
   ownerId     String      @db.Uuid
   closedAt    DateTime?
@@ -161,7 +165,10 @@ model Expense {
   id              String    @id @default(uuid()) @db.Uuid
   groupId         String    @db.Uuid
   description     String
-  amountCents     Int
+  currency            String   // moeda da despesa (catálogo em common/money)
+  originalAmountMinor Int      // na menor unidade de `currency`
+  exchangeRate        Decimal  @db.Decimal(18, 8) // 1 unidade de `currency` em moeda-base; snapshot
+  amountMinor         Int      // convertido, na moeda-base
   paidByMemberId  String    @db.Uuid
   splitType       SplitType
   occurredOn      DateTime  @db.Date
@@ -175,14 +182,15 @@ model Expense {
   shares    ExpenseShare[]
 
   @@index([groupId, occurredOn(sort: Desc), createdAt(sort: Desc)])
-  // CHECK (amount_cents > 0) via SQL na migration.
+  // CHECK (amount_minor > 0) via SQL na migration.
 }
 
 model ExpenseShare {
   id          String @id @default(uuid()) @db.Uuid
   expenseId   String @db.Uuid
   memberId    String @db.Uuid
-  amountCents Int
+  originalAmountMinor Int // parte na moeda da despesa
+  amountMinor         Int // parte na moeda-base (entra no saldo)
   basisPoints Int?
 
   expense Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
@@ -190,7 +198,7 @@ model ExpenseShare {
 
   @@unique([expenseId, memberId])
   @@index([memberId])
-  // CHECK (amount_cents >= 0) via SQL na migration.
+  // CHECK (amount_minor >= 0) via SQL na migration.
 }
 
 model SettlementTransfer {
@@ -198,7 +206,7 @@ model SettlementTransfer {
   groupId      String         @db.Uuid
   fromMemberId String         @db.Uuid
   toMemberId   String         @db.Uuid
-  amountCents  Int
+  amountMinor  Int
   status       TransferStatus @default(PENDING)
   paidAt       DateTime?
   createdAt    DateTime       @default(now())
@@ -209,7 +217,7 @@ model SettlementTransfer {
 
   @@unique([groupId, fromMemberId, toMemberId])
   @@index([groupId])
-  // CHECK (amount_cents > 0 AND from_member_id <> to_member_id) via SQL na migration.
+  // CHECK (amount_minor > 0 AND from_member_id <> to_member_id) via SQL na migration.
 }
 ```
 
@@ -220,7 +228,9 @@ model SettlementTransfer {
 | E-mail único por usuário | `@unique` (e normalização na aplicação) |
 | E-mail e usuário únicos por grupo | `@@unique([groupId, email])`, `@@unique([groupId, userId])` |
 | Nome único por grupo (sem diferenciar maiúsculas) | Índice único em `lower(name)` por grupo, criado por SQL na migration |
-| `amountCents > 0` na despesa | `CHECK` na migration + validação Zod |
+| `originalAmountMinor > 0`, `amountMinor > 0` e `exchangeRate > 0` na despesa | `CHECK` na migration + validação Zod |
+| Soma das partes originais = `originalAmountMinor` e das convertidas = `amountMinor` | Calculator + conferência no use case antes de persistir |
+| `currency = baseCurrency` implica `exchangeRate = 1` | Use case (RN-CUR-03) |
 | Uma parte por participante por despesa | `@@unique([expenseId, memberId])` |
 | Soma das partes = valor da despesa | Calculator + conferência no use case antes de persistir |
 | Soma dos saldos = 0 | Garantida pelos dois itens acima; verificada em runtime em `balances` |
@@ -229,7 +239,9 @@ model SettlementTransfer {
 
 ## Notas de modelagem
 
-- `amountCents` usa `Int` (32 bits, máximo ≈ R$ 21,4 milhões). O limite de negócio por despesa (R$ 1 milhão) fica bem abaixo. Somas de saldo usam `number` no código (seguro até 2⁵³).
+- Valores em `Int` (32 bits, máximo ≈ 2,1 bilhões de unidades mínimas). O limite de negócio por despesa é `1.000.000.000`, abaixo disso. Somas de saldo usam `number` no código (seguro até 2⁵³). A conversão cambial usa `BigInt`.
+- `exchangeRate` é `Decimal(18,8)`; no código trafega como texto decimal e nunca como `number`.
+- O snapshot da despesa (moeda, valor original, taxa, valor convertido) não é recalculado: mudar a taxa de mercado não altera o histórico.
 - As partes são **persistidas** (e não recalculadas a cada consulta) para que o histórico não mude se a regra de arredondamento evoluir.
 - A remoção de participante é física e bloqueada quando há despesas (`RN-GRP-07`), então não existe estado "órfão".
 - Exclusão de despesa é física no MVP; trilha de auditoria é item de roadmap.

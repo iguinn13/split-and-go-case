@@ -17,16 +17,20 @@ flowchart LR
         direction TB
         ctrl["Controllers<br/>validação Zod"]
         uc["Use Cases"]
-        calc["Calculators (funções puras)<br/>split · balance · debt-simplifier"]
+        calc["Calculators (funções puras)<br/>money · split · balance · debt-simplifier"]
         repo["Repositories / Services"]
         prisma["Prisma Client"]
         ctrl --> uc
+        provider["ExchangeRateProvider<br/>(cache em memória)"]
         uc --> calc
         uc --> repo
+        uc --> provider
         repo --> prisma
     end
 
     db[("PostgreSQL")]
+    fx(["API de câmbio<br/>BCE via Frankfurter"])
+    provider -->|"sugestão de taxa"| fx
 
     user -->|HTTPS| pages
     pages --> bff
@@ -63,7 +67,8 @@ flowchart TB
 | ORM | Prisma | Schema declarativo, migrations versionadas, client tipado. |
 | Validação | Zod | Schemas viram tipos TypeScript; compartilhável entre API e web. |
 | Front-end | Next.js (App Router) | SSR, route handlers para guardar o JWT em cookie `httpOnly`, mesmo ecossistema TypeScript. |
-| Fila / cache | **Não utilizados no MVP** | Cálculos são O(2ⁿ·n) com n ≤ 16 e rodam em milissegundos. Ver ADR 0005. |
+| Câmbio | Frankfurter (taxas do BCE), sem chave de API | Gratuito, estável, com taxa por data e todas as moedas do catálogo. É só **sugestão**: o usuário confirma ou edita a taxa. Atrás de `ExchangeRateProvider`, trocável. Ver ADR 0006. |
+| Fila / cache | Sem fila; cache **em memória** só para taxas de câmbio | Cálculos são O(2ⁿ·n) com n ≤ 16 e rodam em milissegundos. Ver ADR 0005. |
 | Local | Docker Compose | Um comando sobe banco, API e web. |
 | CI | GitHub Actions | Lint, testes e build a cada PR. |
 
@@ -94,12 +99,14 @@ apps/api/src/
 │   ├── zod/                 #   ZodValidationPipe, helpers
 │   ├── errors/              #   AppError, filtro global, códigos de erro
 │   ├── auth/                #   JwtAuthGuard, @CurrentUser()
-│   └── money/               #   formatação/validação de centavos
+│   └── money/               #   catálogo de moedas, convertAmount, parse de taxa, limites
 ├── prisma/                  # PrismaModule / PrismaService
 └── modules/
     ├── auth/                #   register, login, me
     ├── users/               #   consulta de usuário (usado por auth e groups)
     ├── groups/              #   grupos e participantes, autorização de acesso
+    ├── currencies/          #   catálogo de moedas (GET /currencies)
+    ├── exchange-rates/      #   sugestão de taxa (GET /exchange-rates) + ExchangeRateProvider
     ├── expenses/            #   CRUD de despesas + split.calculator
     ├── balances/            #   saldo, extrato + balance.calculator
     └── settlements/         #   plano, fechamento, transferências + debt-simplifier
@@ -134,11 +141,13 @@ modules/expenses/
 
 ### Interfaces: apenas quando necessárias
 
-Nenhuma interface é criada de início. Classes concretas são injetadas diretamente pelo DI do Nest. Uma interface só entra se houver duas implementações reais ou uma fronteira externa que precise ser simulada em teste (ex.: um futuro provedor de câmbio na V2). A decisão fica registrada no ADR 0004.
+Classes concretas são injetadas diretamente pelo DI do Nest. Uma interface só entra se houver duas implementações reais ou uma fronteira externa que precise ser simulada em teste.
+
+**Única interface do MVP: `ExchangeRateProvider`.** É uma fronteira externa (HTTP) que precisa ser trocada por uma implementação falsa nos testes e pode ter outro provedor no futuro. Implementações: `FrankfurterExchangeRateProvider` (real) e `FakeExchangeRateProvider` (testes). Decisão registrada nos ADRs 0004 e 0006.
 
 ## 3. Como tratamos regras complexas sem DDD
 
-O desafio do domínio está em três regras: **rateio com resto de centavos**, **saldo** e **simplificação de dívidas**. Abordagem avaliada e escolhida:
+O desafio do domínio está em quatro regras: **conversão cambial**, **rateio com resto da menor unidade**, **saldo** e **simplificação de dívidas**. Abordagem avaliada e escolhida:
 
 | Abordagem | Avaliação |
 |---|---|
@@ -158,9 +167,9 @@ sequenceDiagram
 
     C->>U: execute(userId, groupId, input válido)
     U->>G: assertCanWrite(userId, groupId)
-    U->>U: valida pagador e participantes
-    U->>S: calculateShares(total, split)
-    S-->>U: shares[] (soma == total)
+    U->>U: valida pagador, participantes e moeda
+    U->>S: convertAmount(original, taxa) e allocate(...)
+    S-->>U: valor convertido + shares originais e convertidas (somas exatas)
     U->>R: createWithShares(...) em transação
     R-->>U: despesa
     U-->>C: despesa
@@ -170,10 +179,12 @@ sequenceDiagram
 
 | Função | Entrada | Saída |
 |---|---|---|
-| `calculateShares(total, split)` | total em centavos + regra (`EQUAL` / `PERCENTAGE` / `FIXED`) | `[{ memberId, amountCents }]` com soma exata |
-| `calculateBalances(expenses)` | despesas com pagador e partes | `Map<memberId, netCents>` com soma `0` |
+| `convertAmount(originalMinor, rate, originCurrency, baseCurrency)` | valor, taxa (texto decimal) e moedas | valor convertido (`BigInt`, meio para cima) |
+| `allocateProportionally(total, weights)` | total e pesos por participante | partes inteiras com soma exata (maior resto, desempate por `memberId`) |
+| `calculateShares(input)` | valor original, valor convertido e regra (`EQUAL` / `PERCENTAGE` / `FIXED`) | `[{ memberId, originalAmountMinor, amountMinor }]`, somas exatas nas duas moedas |
+| `calculateBalances(expenses)` | despesas com pagador e partes | `Map<memberId, netMinor>` com soma `0` |
 | `buildStatement(memberId, expenses)` | despesas do grupo | linhas com saldo acumulado |
-| `simplifyDebts(balances)` | `Map<memberId, netCents>` | `[{ from, to, amountCents }]` mínimo |
+| `simplifyDebts(balances)` | `Map<memberId, netMinor>` | `[{ from, to, amountMinor }]` mínimo |
 
 ### Algoritmo de simplificação (resumo; detalhes no ADR 0002)
 
@@ -186,7 +197,7 @@ sequenceDiagram
 
 - Criar, editar e excluir despesas e fechar o grupo rodam em **transação**.
 - O fechamento faz `SELECT … FOR UPDATE` na linha do grupo (via `$queryRaw` dentro da transação); a criação de despesa faz o mesmo e confere `status = OPEN`. Isso serializa as duas operações e satisfaz `AC-BAL-14`.
-- Constraints no banco (unicidade, FKs, `CHECK amount_cents > 0`) são a última linha de defesa; validações de aplicação dão as mensagens claras.
+- Constraints no banco (unicidade, FKs, `CHECK amount_minor > 0`) são a última linha de defesa; validações de aplicação dão as mensagens claras.
 
 ## 5. Autenticação e autorização
 
@@ -203,7 +214,8 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 - Next.js (App Router) + TypeScript + Tailwind CSS.
 - Server Components para leitura; Client Components para formulários interativos (prévia do rateio).
 - Cliente de API tipado em `apps/web/src/lib/api`; schemas Zod compartilhados reaproveitados quando fizer sentido (pacote `packages/shared`, opcional).
-- Formatação monetária com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })` a partir de centavos inteiros.
+- Formatação monetária com `Intl.NumberFormat('pt-BR', { style: 'currency', currency })`, usando a moeda e as casas decimais do catálogo (`GET /currencies`) e dividindo a menor unidade apenas para exibição.
+- O formulário de despesa busca a taxa sugerida em `GET /exchange-rates` (via Route Handler), permite editá-la e espelha em prévia a conversão e o rateio (mesmas regras de `allocateProportionally`).
 
 ## 8. Estrutura do repositório
 
@@ -233,4 +245,4 @@ Um filtro global converte `AppError` (e erros do Zod/Prisma conhecidos) no contr
 
 - **Web:** Vercel.
 - **API + Postgres:** Render ou Railway, com migrations via `prisma migrate deploy` no release.
-- Variáveis: `DATABASE_URL`, `JWT_SECRET`, `API_URL` (web → API), `CORS_ORIGIN`.
+- Variáveis: `DATABASE_URL`, `JWT_SECRET`, `API_URL` (web → API), `CORS_ORIGIN`, `FX_PROVIDER_URL` (padrão `https://api.frankfurter.dev/v1`).

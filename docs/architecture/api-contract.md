@@ -1,6 +1,6 @@
 # Contrato da API
 
-API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `Authorization: Bearer <jwt>` (exceto rotas públicas). Todos os identificadores são UUID. Valores monetários são **centavos inteiros** (`...Cents`). Datas de despesa são `YYYY-MM-DD`; timestamps são ISO 8601 em UTC.
+API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `Authorization: Bearer <jwt>` (exceto rotas públicas). Todos os identificadores são UUID. Valores monetários são **inteiros na menor unidade da moeda** (`...Minor`; centavos em BRL, ienes em JPY). Taxas de câmbio são **texto decimal** (`"5.4325"`), nunca número. Datas de despesa são `YYYY-MM-DD`; timestamps são ISO 8601 em UTC.
 
 ## Convenções
 
@@ -37,6 +37,9 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 | 422 | `INVALID_SPLIT_PARTICIPANTS` | Pagador/participante fora do grupo ou repetido |
 | 422 | `SPLIT_PERCENTAGE_SUM_INVALID` | Soma dos basis points ≠ 10000 |
 | 422 | `SPLIT_FIXED_SUM_INVALID` | Soma dos valores fixos ≠ total |
+| 422 | `EXCHANGE_RATE_INVALID` | Taxa ausente (moeda ≠ base), inválida, ou ≠ 1 com a mesma moeda |
+| 422 | `AMOUNT_OUT_OF_RANGE` | Valor original ou convertido fora de `1..1.000.000.000` |
+| 503 | `EXCHANGE_RATE_UNAVAILABLE` | Provedor de câmbio indisponível ou com tempo esgotado |
 | 500 | `INTERNAL_ERROR` | Erro inesperado (inclui violação do invariante de saldo) |
 
 ### Paginação
@@ -51,6 +54,19 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 |---|---|---|---|
 | GET | `/health` | Pública | `200 { "status": "ok", "database": "up" }` |
 
+### Moedas e câmbio (spec 06)
+
+| Método | Rota | Auth | Resposta |
+|---|---|---|---|
+| GET | `/currencies` | JWT | `200 [{ code, name, minorUnits }]` |
+| GET | `/exchange-rates?from=USD&to=BRL&date=2026-07-10` | JWT | `200 { from, to, rate, date, source }` ou `503 EXCHANGE_RATE_UNAVAILABLE` |
+
+```jsonc
+{ "from": "USD", "to": "BRL", "rate": "5.43250000", "date": "2026-07-10", "source": "frankfurter" }
+```
+
+`date` é opcional (padrão: hoje). Com `from = to`, retorna `rate = "1"` sem chamar o provedor. A resposta é cacheada em memória por par e data (1 h).
+
 ### Auth (spec 01)
 
 | Método | Rota | Auth | Corpo | Resposta |
@@ -63,7 +79,7 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 
 | Método | Rota | Corpo | Resposta |
 |---|---|---|---|
-| POST | `/groups` | `{ name, description?, members: [{ name, email? }] }` | `201 Group` |
+| POST | `/groups` | `{ name, baseCurrency?, description?, members: [{ name, email? }] }` | `201 Group` |
 | GET | `/groups` | — | `200 GroupSummary[]` |
 | GET | `/groups/:groupId` | — | `200 Group` |
 | PATCH | `/groups/:groupId` | `{ name?, description? }` | `200 Group` |
@@ -74,7 +90,7 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 // Group
 {
   "id": "uuid", "name": "Viagem Floripa", "description": null,
-  "currency": "BRL", "status": "OPEN", "ownerId": "uuid",
+  "baseCurrency": "BRL", "status": "OPEN", "ownerId": "uuid",
   "closedAt": null, "createdAt": "2026-07-01T12:00:00.000Z",
   "members": [{ "id": "uuid", "name": "Ana", "email": "ana@example.com", "userId": "uuid" }]
 }
@@ -93,23 +109,27 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 | DELETE | `/groups/:groupId/expenses/:expenseId` | — | `204` |
 
 ```jsonc
-// CreateExpense — o campo "split" é uma união discriminada por "type"
+// CreateExpense — "split" é uma união discriminada por "type"
 {
   "description": "Jantar",
-  "amountCents": 10000,
+  "currency": "USD",                      // opcional: padrão = baseCurrency do grupo
+  "originalAmountMinor": 10000,           // na menor unidade de "currency" (US$ 100,00)
+  "exchangeRate": "5.4325",               // obrigatória se currency != baseCurrency
   "paidByMemberId": "uuid",
   "occurredOn": "2026-07-10",
   "split": { "type": "EQUAL", "participantIds": ["uuid", "uuid", "uuid"] }
   // { "type": "PERCENTAGE", "shares": [{ "memberId": "uuid", "basisPoints": 5000 }, ...] }
-  // { "type": "FIXED",      "shares": [{ "memberId": "uuid", "amountCents": 4000 }, ...] }
+  // { "type": "FIXED",      "shares": [{ "memberId": "uuid", "originalAmountMinor": 4000 }, ...] }
 }
 
 // Expense
 {
-  "id": "uuid", "groupId": "uuid", "description": "Jantar", "amountCents": 10000,
+  "id": "uuid", "groupId": "uuid", "description": "Jantar",
+  "currency": "USD", "originalAmountMinor": 10000, "exchangeRate": "5.43250000",
+  "amountMinor": 54325,                   // convertido, na moeda-base do grupo
   "paidByMemberId": "uuid", "splitType": "EQUAL", "occurredOn": "2026-07-10",
   "createdByUserId": "uuid", "createdAt": "...", "updatedAt": "...",
-  "shares": [{ "memberId": "uuid", "amountCents": 3334, "basisPoints": null }]
+  "shares": [{ "memberId": "uuid", "originalAmountMinor": 3334, "amountMinor": 18109, "basisPoints": null }]
 }
 ```
 
@@ -117,17 +137,19 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 
 | Método | Rota | Resposta |
 |---|---|---|
-| GET | `/groups/:groupId/balances` | `200 { balances: [{ memberId, name, paidCents, owedCents, netCents }] }` |
+| GET | `/groups/:groupId/balances` | `200 { currency, balances: [{ memberId, name, paidMinor, owedMinor, netMinor }] }` (`currency` = moeda-base) |
 | GET | `/groups/:groupId/members/:memberId/statement` | `200 Statement` |
 
 ```jsonc
 // Statement
 {
+  "currency": "BRL",                      // moeda-base; todos os valores abaixo estão nela
   "member": { "id": "uuid", "name": "Ana" },
-  "totals": { "paidCents": 10000, "owedCents": 2500, "netCents": 7500 },
+  "totals": { "paidMinor": 10000, "owedMinor": 2500, "netMinor": 7500 },
   "lines": [{
     "expenseId": "uuid", "description": "Jantar", "occurredOn": "2026-07-10",
-    "paidCents": 10000, "owedCents": 2500, "netCents": 7500, "runningBalanceCents": 7500
+    "original": { "currency": "USD", "amountMinor": 10000, "exchangeRate": "5.43250000" },  // null se moeda = base
+    "paidMinor": 10000, "owedMinor": 2500, "netMinor": 7500, "runningBalanceMinor": 7500
   }]
 }
 ```
@@ -143,13 +165,13 @@ API REST em JSON. Base URL local: `http://localhost:3001`. Autenticação por `A
 ```jsonc
 // SettlementPlan
 {
-  "groupId": "uuid", "status": "OPEN",           // OPEN: calculado na hora | CLOSED: persistido
-  "transferCount": 1, "totalMovedCents": 5000,
+  "groupId": "uuid", "currency": "BRL", "status": "OPEN",   // currency = moeda-base; OPEN: calculado na hora | CLOSED: persistido
+  "transferCount": 1, "totalMovedMinor": 5000,
   "transfers": [{
     "id": null,                                   // preenchido somente quando CLOSED
     "from": { "memberId": "uuid", "name": "Duda" },
     "to":   { "memberId": "uuid", "name": "Ana" },
-    "amountCents": 5000,
+    "amountMinor": 5000,
     "status": null,                               // PENDING | PAID quando CLOSED
     "paidAt": null
   }]
