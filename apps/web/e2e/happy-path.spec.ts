@@ -106,7 +106,10 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
   await expect(page).toHaveURL(/\/groups\/[0-9a-f-]{36}$/);
   const groupId = /\/groups\/([0-9a-f-]{36})/.exec(page.url())![1]!;
   await expect(page.getByRole('heading', { name: 'Viagem E2E' })).toBeVisible();
-  await expect(page.getByText('Moeda-base: BRL · Aberto')).toBeVisible();
+  const summary = page.getByRole('region', { name: 'Resumo do grupo' });
+  await expect(summary).toContainText('Moeda-base');
+  await expect(summary.getByText('BRL', { exact: true })).toBeVisible();
+  await expect(summary.getByText('Aberto', { exact: true })).toBeVisible();
   await expect(
     page.getByRole('list', { name: 'Participantes do grupo' }).getByRole('listitem'),
   ).toHaveCount(3);
@@ -172,7 +175,7 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
       await expectMoney(page.getByTestId(`share-${ids[name]}`), shares.get(ids[name])!);
     }
     await expect(
-      page.getByRole('status').filter({ hasText: 'Rateio completo: 3 participante(s)' }),
+      page.getByRole('status').filter({ hasText: /Rateio completo\s*3 participante\(s\)/ }),
     ).toContainText(re(moneyPattern(converted)));
 
     await page.getByRole('button', { name: 'Salvar' }).click();
@@ -248,6 +251,11 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
   await expect(
     page.getByRole('list', { name: 'Despesas do grupo' }).getByRole('listitem'),
   ).toHaveCount(expenseRows.length);
+  // Summary total = sum of the expenses' converted totals (reference built from the inputs).
+  await expectMoney(
+    page.getByTestId('group-total'),
+    expenseRows.reduce((sum, row) => sum + row.totalMinor, 0n),
+  );
 
   // --- Balances ---------------------------------------------------------------------------
   await openTab(page, 'Saldos');
@@ -298,8 +306,12 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Fechar grupo definitivamente' }).click();
 
-  await expect(page.getByText('Moeda-base: BRL · Fechado')).toBeVisible();
-  await expect(page.getByText('Aviso: este grupo está fechado.')).toBeVisible();
+  await expect(summary.getByText('Fechado', { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Os dados estão disponíveis somente para consulta.' }),
+  ).toContainText('Grupo fechado');
   await expect(page.getByRole('button', { name: 'Fechar grupo', exact: true })).toHaveCount(0);
   await expect(page.getByText(`0 de ${plan.length} pagas`)).toBeVisible();
   await expect(transfers).toHaveCount(plan.length);

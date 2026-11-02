@@ -1,12 +1,19 @@
-import { HandCoins, Receipt, Scale, Users } from 'lucide-react';
+import { Coins, HandCoins, Lock, Receipt, Scale, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BalancesPanel } from '@/components/balances/balances-panel';
 import { ExpensesPanel } from '@/components/expenses/expenses-panel';
 import { MembersPanel } from '@/components/groups/members-panel';
 import { SettlementPanel } from '@/components/settlement/settlement-panel';
-import { NavTabs } from '@/components/ui/nav-tabs';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
+import { NavTabs } from '@/components/ui/nav-tabs';
+import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
+import type { BalancesView } from '@/lib/balances/types';
+import { formatMoney } from '@/lib/money/format-money';
 import { ApiError, errorMessage } from '@/lib/api';
 import { serverApi } from '@/lib/api/server';
 import { pageQuerySchema } from '@/lib/expenses/schemas';
@@ -26,6 +33,26 @@ function parseTab(value: string | string[] | undefined): TabId {
   return tab ? tab.id : 'members';
 }
 
+/** URL of the group on a given tab, so a retry lands where the user was. */
+function groupHref(id: string, tab: TabId, page: number): string {
+  const path = `/groups/${encodeURIComponent(id)}?tab=${tab}`;
+  return tab === 'expenses' && page > 1 ? `${path}&page=${page}` : path;
+}
+
+/**
+ * Sum of what members paid = total of all expenses in the base currency. It comes from the
+ * balances endpoint (persisted values); the summary simply omits the total if it fails.
+ */
+async function loadTotal(groupId: string): Promise<number | null> {
+  try {
+    const data = await serverApi<BalancesView>(`/groups/${groupId}/balances`);
+    return data.balances.reduce((sum, b) => sum + b.paidMinor, 0);
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    return null;
+  }
+}
+
 export default async function GroupPage({
   params,
   searchParams,
@@ -40,10 +67,12 @@ export default async function GroupPage({
 
   let group: Group;
   let me: CurrentUser;
+  let total: number | null;
   try {
-    [group, me] = await Promise.all([
+    [group, me, total] = await Promise.all([
       serverApi<Group>(`/groups/${encodeURIComponent(id)}`),
       serverApi<CurrentUser>('/auth/me'),
+      loadTotal(id),
     ]);
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
@@ -54,7 +83,10 @@ export default async function GroupPage({
         title="Não foi possível carregar o grupo"
         message={errorMessage(error.code)}
         action={
-          <Link href={`/groups/${encodeURIComponent(id)}`} className="font-semibold underline">
+          <Link
+            href={groupHref(id, tab, page)}
+            className={buttonVariants({ variant: 'secondary' })}
+          >
             Tentar novamente
           </Link>
         }
@@ -65,26 +97,56 @@ export default async function GroupPage({
   const closed = group.status === 'CLOSED';
   const base = `/groups/${group.id}`;
 
+  const memberCount = `${group.members.length} ${group.members.length === 1 ? 'participante' : 'participantes'}`;
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/groups" className="text-sm font-semibold text-link underline">
-          Voltar aos grupos
-        </Link>
-        <h1 className="mt-1 break-words text-2xl font-bold">{group.name}</h1>
-        {group.description ? <p className="text-muted-foreground">{group.description}</p> : null}
-        <p className="mt-1 text-sm text-muted-foreground">
-          Moeda-base: {group.baseCurrency} · {closed ? 'Fechado' : 'Aberto'}
-        </p>
-      </div>
+      <PageHeader title={group.name} backHref="/groups" backLabel="Voltar aos grupos" />
+
+      <section
+        aria-label="Resumo do grupo"
+        className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
+      >
+        <div className="flex items-start gap-3">
+          <Avatar name={group.name} size="lg" decorative />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={closed ? 'neutral' : 'success'}>
+                {closed ? <Lock aria-hidden /> : null}
+                {closed ? 'Fechado' : 'Aberto'}
+              </Badge>
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <Users aria-hidden className="size-4" />
+                {memberCount}
+              </span>
+            </div>
+            {group.description ? (
+              <p className="break-words text-muted-foreground">{group.description}</p>
+            ) : null}
+          </div>
+        </div>
+        <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3">
+          <div className="min-w-0">
+            <dt className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Coins aria-hidden className="size-4" />
+              Moeda-base
+            </dt>
+            <dd className="font-semibold">{group.baseCurrency}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Wallet aria-hidden className="size-4" />
+              Total de despesas
+            </dt>
+            <dd className="break-words text-amount font-bold" data-testid="group-total">
+              {total === null ? '—' : formatMoney(total, group.baseCurrency)}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       {closed ? (
-        <div
-          role="status"
-          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium"
-        >
-          Aviso: este grupo está fechado. Os dados estão disponíveis somente para consulta.
-        </div>
+        <Notice title="Grupo fechado">Os dados estão disponíveis somente para consulta.</Notice>
       ) : null}
 
       <NavTabs

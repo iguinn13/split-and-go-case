@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { mutate } from '@/lib/groups/client';
 
 interface Props {
@@ -37,23 +38,26 @@ export function ExpenseActions({ groupId, expenseId, description }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      {message ? (
-        <p role="alert" className="text-sm text-danger-700">
-          Erro: {message}
-        </p>
-      ) : null}
+      {message ? <Alert>{message}</Alert> : null}
       {confirming ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm">Excluir esta despesa?</span>
           <Button
             variant="danger"
+            size="sm"
+            loading={pending}
             disabled={pending}
             onClick={() => void onDelete()}
             aria-label={`Confirmar exclusão de ${description}`}
           >
             {pending ? 'Excluindo...' : 'Confirmar exclusão'}
           </Button>
-          <Button variant="secondary" disabled={pending} onClick={() => setConfirming(false)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pending}
+            onClick={() => setConfirming(false)}
+          >
             Cancelar
           </Button>
         </div>
@@ -62,12 +66,13 @@ export function ExpenseActions({ groupId, expenseId, description }: Props) {
           <Link
             href={`/groups/${groupId}/expenses/${expenseId}/edit`}
             aria-label={`Editar ${description}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:bg-brand-50"
+            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
           >
             Editar
           </Link>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setConfirming(true)}
             aria-label={`Excluir ${description}`}
           >
