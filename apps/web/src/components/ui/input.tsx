@@ -1,31 +1,31 @@
 import type { InputHTMLAttributes } from 'react';
+import { fieldAria } from '@/lib/ui/field-ids';
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
+  /** Explicit, whitespace-free id: it links the label, the hint and the error message. */
+  id: string;
   label: string;
   error?: string;
-  /** Extra description ids, merged with the error id. */
+  /** Extra description ids (for example a hint paragraph), merged with the error id. */
   describedBy?: string;
 }
 
 export function Input({ label, error, id, className = '', describedBy, ...props }: InputProps) {
-  const inputId = id ?? props.name ?? label;
-  const errorId = `${inputId}-error`;
+  const aria = fieldAria(id, Boolean(error), describedBy);
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-sm font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       <input
-        id={inputId}
+        id={id}
         aria-invalid={error ? true : undefined}
-        aria-describedby={
-          [describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
-        }
+        aria-describedby={aria.describedBy}
         className={`min-h-11 rounded-lg border bg-surface px-3 py-2 ${error ? 'border-danger-700' : 'border-line'} ${className}`}
         {...props}
       />
       {error ? (
-        <p id={errorId} className="text-sm text-danger-700">
+        <p id={aria.errorId} className="text-sm text-danger-700">
           Erro: {error}
         </p>
       ) : null}

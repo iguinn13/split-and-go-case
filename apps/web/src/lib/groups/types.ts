@@ -22,6 +22,7 @@ export interface Group {
 export interface GroupSummary {
   id: string;
   name: string;
+  baseCurrency: string;
   status: GroupStatus;
   memberCount: number;
   createdAt: string;

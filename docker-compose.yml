@@ -41,6 +41,7 @@ services:
     environment:
       # Server-side only: the web container reaches the API over the compose network.
       API_URL: http://api:3001
+      WEB_TRUST_FORWARDED_HOST: ${WEB_TRUST_FORWARDED_HOST:-}
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:

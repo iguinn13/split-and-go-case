@@ -70,7 +70,7 @@ flowchart LR
     prisma --> db
 ```
 
-Fluxo de autenticação: o navegador envia e-mail e senha ao Route Handler `POST /api/auth/login`, que chama `POST /auth/login` na API e grava o `accessToken` (JWT, 24 h) no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção). O navegador nunca lê o token: Server Components e Route Handlers o leem do cookie e o repassam à API como `Authorization: Bearer`. Sem cookie, `proxy.ts` redireciona para `/login`; uma resposta `401` da API leva a `/api/auth/expired`, que apaga o cookie. Mutações do navegador passam pelos Route Handlers (nunca falam direto com a API). O CORS da API (`CORS_ORIGIN`) existe, mas o fluxo da interface não depende dele. Ver [ADR 0003](docs/architecture/decisions/0003-jwt-httpOnly-cookie.md).
+Fluxo de autenticação: o navegador envia e-mail e senha ao Route Handler `POST /api/auth/login`, que chama `POST /auth/login` na API e grava o `accessToken` (JWT, 24 h) no cookie `sg_session` (`httpOnly`, `SameSite=Lax`, `Secure` em produção). O navegador nunca lê o token: Server Components e Route Handlers o leem do cookie e o repassam à API como `Authorization: Bearer`. Sem cookie, `proxy.ts` redireciona para `/login`; uma resposta `401` da API leva a `/session-expired`, página que confirma a rejeição (`GET /auth/me`) e só então apaga o cookie por `POST /api/auth/logout` (nenhum `GET` altera o cookie, então um link externo não desloga ninguém). Todos os Route Handlers de mutação passam por `guardMutation` (Origin igual ao `Host`, `Content-Type` JSON) e validam UUIDs com `guardUuids`. Mutações do navegador passam pelos Route Handlers (nunca falam direto com a API). O CORS da API (`CORS_ORIGIN`) existe, mas o fluxo da interface não depende dele. Ver [ADR 0003](docs/architecture/decisions/0003-jwt-httpOnly-cookie.md).
 
 ### Infraestrutura e CI
 
@@ -205,6 +205,7 @@ Variáveis (em `.env`, modelo em `.env.example`):
 | `CORS_ORIGIN` | `http://localhost:3000` | Origem permitida pelo CORS da API; ao mudar `WEB_PORT`, ajuste junto |
 | `FX_PROVIDER_URL` | `https://api.frankfurter.dev/v1` | Provedor de câmbio (precisa de internet; sem ele o usuário informa a taxa manualmente) |
 | `POSTGRES_PORT`, `API_PORT`, `WEB_PORT` | `5432`, `3001`, `3000` | Portas publicadas no host |
+| `WEB_TRUST_FORWARDED_HOST` | vazio | Defina `1` somente atrás de um proxy reverso confiável que reescreva o `Host`: a web passa a comparar o `Origin` com `X-Forwarded-Host` (CSRF dos Route Handlers). O proxy deve **sobrescrever** (nunca acrescentar a) esse cabeçalho, pois o código lê o primeiro valor |
 
 `DATABASE_URL` e `API_URL` são definidas pelo `docker-compose.yml`. **Se a porta 5432 (ou outra) já estiver em uso**, defina `POSTGRES_PORT`, `API_PORT` e/ou `WEB_PORT` no `.env` (por exemplo `POSTGRES_PORT=25432`, `API_PORT=23001`, `WEB_PORT=23000` e `CORS_ORIGIN=http://localhost:23000`); para isolar do resto da máquina use também `docker compose -p outro-nome ...`.
 
@@ -283,10 +284,7 @@ O que **não** está implementado e o que ainda aguarda decisão humana. Os pont
 
 | # | Tema | Comportamento atual | Onde ver |
 |---|---|---|---|
-| c | `GroupSummary` (`GET /groups`) e `baseCurrency` | API pronta: cada item da lista traz `baseCurrency`. Web pendente (#50): a lista ainda faz um `GET /groups/:id` por grupo (N+1). | `apps/web/src/app/groups/page.tsx`, `apps/api/src/modules/groups/list-groups.use-case.ts` |
-| d | RF-UI-12: extrato com valor convertido | API pronta: a linha do extrato traz `amountMinor` (total convertido da despesa, valor persistido). Web pendente (#50): hoje só mostra o total convertido para quem pagou. | `apps/api/src/modules/balances/`, `apps/web/src/components/balances/` |
 | e | Entrada de valor no formulário web | Um único separador é lido como decimal: colar `1.234` em moeda de 2 casas vira 1,23 e digitar `1.234,56` vira R$ 12.356,00. Limitação conhecida. | `apps/web/src/lib/expenses/money-input.ts` |
-| h | Guarda dos Route Handlers da web | `guardMutation`/`guardUuids` (origem e UUID) só protegem os handlers de despesas e quitação, não os de grupos, participantes e auth. | `apps/web/src/lib/http/guard.ts` |
 | i | Formatação do iene | A interface mostra `JP¥ 5.000`; AC-UI-10 diz `¥ 5.000`. | `apps/web/src/lib/money/format-money.ts`, `docs/specs/05-settlement-dashboard.md` |
 | j | Títulos de PR e escopos do commitlint | O escopo `exchange-rates` não está no `scope-enum`; por isso o título da T-23 usa o escopo `api` e o da T-16 foi encurtado para caber em 72 caracteres (backlog já atualizado). | `commitlint.config.mjs`, `docs/tasks/backlog.md` |
 | k | Deploy (task #22) | Pendente; ver acima. | `docs/tasks/backlog.md` (T-22) |

@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation';
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/paths';
 import { getSessionToken } from '@/lib/auth/session';
 import { apiFetch, type ApiRequestOptions } from './client';
 import { ApiError } from './errors';
 
-export const SESSION_EXPIRED_PATH = '/api/auth/expired';
+export { SESSION_EXPIRED_PATH };
 
 /**
  * Server-only API call that attaches the JWT from the httpOnly cookie.
- * Without a session, or on a 401, it sends the user through the route handler
- * that clears the cookie and redirects to /login.
+ * Without a session, or on a 401, it sends the user to the page
+ * that confirms the rejection and signs out (a POST) before landing on /login.
  */
 export async function serverApi<T>(
   path: string,

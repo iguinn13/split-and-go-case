@@ -16,6 +16,8 @@ export interface StatementLine {
   description: string;
   occurredOn: string;
   original: { currency: string; amountMinor: number; exchangeRate: string } | null;
+  /** Expense total converted to the group's base currency (persisted value, never recomputed). */
+  amountMinor: number;
   paidMinor: number;
   owedMinor: number;
   netMinor: number;

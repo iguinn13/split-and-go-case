@@ -54,11 +54,3 @@ export function statementHref(groupId: string, memberId: string): string {
 export function balancesHref(groupId: string): string {
   return `/groups/${groupId}?tab=balances`;
 }
-
-/**
- * Converted total of a foreign-currency expense, when the statement line carries it:
- * only the payer's `paidMinor` equals the converted total; otherwise it is unknown.
- */
-export function lineConvertedMinor(line: { paidMinor: number }): number | null {
-  return line.paidMinor > 0 ? line.paidMinor : null;
-}

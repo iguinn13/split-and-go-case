@@ -1,3 +1,5 @@
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/paths';
+
 /** Client-side helper: calls a Route Handler and normalizes the pt-BR error message. */
 export type MutationResult<T> =
   { ok: true; data: T } | { ok: false; message: string; code?: string };
@@ -13,7 +15,7 @@ export async function mutate<T>(
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
     if (response.status === 401) {
-      window.location.assign('/api/auth/expired');
+      window.location.assign(SESSION_EXPIRED_PATH);
       return { ok: false, message: 'Sua sessão expirou. Entre novamente.' };
     }
     if (!response.ok) {
