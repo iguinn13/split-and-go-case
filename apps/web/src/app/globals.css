@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+/* Central theme: colors and spacing used across the app. */
+@theme {
+  --color-brand-50: #eef6ff;
+  --color-brand-600: #1d4ed8;
+  --color-brand-700: #1e40af;
+  --color-surface: #ffffff;
+  --color-page: #f8fafc;
+  --color-ink: #0f172a;
+  --color-muted: #475569;
+  --color-line: #cbd5e1;
+  --color-danger-50: #fef2f2;
+  --color-danger-700: #b91c1c;
+  --spacing-page: 1rem;
+  --radius-card: 0.75rem;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
