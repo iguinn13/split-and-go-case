@@ -35,3 +35,7 @@ docs/case.pdf
 # Claude Code local files
 .claude/settings.local.json
 .claude/worktrees/
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/

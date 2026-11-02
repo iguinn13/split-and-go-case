@@ -61,3 +61,10 @@ Todos os cenários de `docs/engineering/edge-cases.md` viram caso de teste, alé
 ## CI
 
 Workflow `.github/workflows/ci.yml` (task #6): instala com pnpm (com cache), roda `lint`, `typecheck`, `test` e `build`, com serviço PostgreSQL para testes de integração.
+
+## E2E da interface (Playwright)
+
+- Código em `apps/web/e2e/`; rode com `pnpm --filter @split-and-go/web test:e2e` (fora do `pnpm test`, que continua sem banco). Requer Docker e `pnpm --filter @split-and-go/web exec playwright install chromium`.
+- O teste sobe o Docker Compose em um projeto isolado (`splitgo-e2e`, portas 13000/13001/15432; configurável por `E2E_*`) com o override `apps/web/e2e/docker-compose.e2e.yml`, que troca o provedor de câmbio por um stub local (`fx-stub`, compatível com Frankfurter). Ao final executa `down -v` apenas nesse projeto.
+- Os valores esperados são calculados no próprio teste com `BigInt` (`e2e/support/expected.ts`), sem importar o código da aplicação.
+- No CI, o job `E2E (Playwright)` sobe a stack, roda o teste e publica o relatório e os traces como artefato em caso de falha.

@@ -68,3 +68,61 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_EXTERNAL_STACK: '1'
+      E2E_COMPOSE_PROJECT: splitgo-e2e
+      WEB_PORT: '13000'
+      API_PORT: '13001'
+      POSTGRES_PORT: '15432'
+      CORS_ORIGIN: http://localhost:13000
+      JWT_SECRET: ci-e2e-only-secret
+      COMPOSE: >-
+        docker compose -p splitgo-e2e -f docker-compose.yml -f apps/web/e2e/docker-compose.e2e.yml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Resolve Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter @split-and-go/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Playwright browsers
+        if: steps.browsers.outputs.cache-hit != 'true'
+        run: pnpm --filter @split-and-go/web exec playwright install --with-deps chromium
+      - name: Install Playwright system dependencies
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm --filter @split-and-go/web exec playwright install-deps chromium
+      - name: Start the Docker Compose stack
+        run: $COMPOSE up -d --build --wait
+      - name: Run Playwright tests
+        run: pnpm --filter @split-and-go/web test:e2e
+      - name: Show container logs
+        if: failure()
+        run: $COMPOSE logs --no-color --tail=200
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Tear down the stack
+        if: always()
+        run: $COMPOSE down -v --remove-orphans
