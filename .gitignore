@@ -15,6 +15,7 @@ coverage/
 .env.*
 !.env.example
 !.env.production.example
+.previous-release
 
 # Logs and OS files
 *.log
