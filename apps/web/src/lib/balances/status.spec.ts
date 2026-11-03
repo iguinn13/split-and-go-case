@@ -3,25 +3,31 @@ import { conversionLine } from '@/lib/expenses/format';
 import { balanceStatus, magnitude, statementHref } from './status';
 
 describe('balanceStatus', () => {
-  it('maps a positive balance to + / recebe / emerald', () => {
+  it('maps a positive balance to + / recebe / positive', () => {
     const s = balanceStatus(1);
     expect([s.kind, s.icon, s.label]).toEqual(['receives', '+', 'recebe']);
-    expect(s.textClass).toBe('text-emerald-800');
-    expect(s.borderClass).toBe('border-l-emerald-700');
+    expect(s.textClass).toBe('text-positive');
+    expect(s.borderClass).toBe('border-l-positive');
   });
 
-  it('maps a negative balance to − / deve / danger', () => {
+  it('maps a negative balance to − / deve / negative', () => {
     const s = balanceStatus(-1);
     expect([s.kind, s.icon, s.label]).toEqual(['owes', '−', 'deve']);
-    expect(s.textClass).toBe('text-danger-700');
-    expect(s.borderClass).toBe('border-l-danger-700');
+    expect(s.textClass).toBe('text-negative');
+    expect(s.borderClass).toBe('border-l-negative');
+  });
+
+  it('exposes the first-person headline for the signed-in user', () => {
+    expect(balanceStatus(5).selfHeadline).toBe('Você recebe');
+    expect(balanceStatus(-5).selfHeadline).toBe('Você deve');
+    expect(balanceStatus(0).selfHeadline).toBe('Você está quitado');
   });
 
   it('maps zero to ✓ / quitado / muted', () => {
     const s = balanceStatus(0);
     expect([s.kind, s.icon, s.label]).toEqual(['settled', '✓', 'quitado']);
     expect(s.textClass).toBe('text-muted-foreground');
-    expect(s.borderClass).toBe('border-l-line');
+    expect(s.borderClass).toBe('border-l-input');
   });
 });
 

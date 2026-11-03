@@ -171,7 +171,10 @@ export default async function GroupPage({
       ) : tab === 'expenses' ? (
         <ExpensesPanel group={group} userId={me.id} page={page} />
       ) : tab === 'balances' ? (
-        <BalancesPanel groupId={group.id} />
+        <BalancesPanel
+          groupId={group.id}
+          currentMemberId={group.members.find((m) => m.userId === me.id)?.id}
+        />
       ) : (
         <SettlementPanel groupId={group.id} isOwner={group.ownerId === me.id} />
       )}

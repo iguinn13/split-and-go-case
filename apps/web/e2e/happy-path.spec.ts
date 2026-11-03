@@ -313,7 +313,8 @@ test('happy path: register, group, expenses, balances, settlement and closing', 
       .filter({ hasText: 'Os dados estão disponíveis somente para consulta.' }),
   ).toContainText('Grupo fechado');
   await expect(page.getByRole('button', { name: 'Fechar grupo', exact: true })).toHaveCount(0);
-  await expect(page.getByText(`0 de ${plan.length} pagas`)).toBeVisible();
+  await expect(page.getByTestId('paid-summary')).toHaveText(`0 de ${plan.length} pagas`);
+  await expect(page.getByTestId('settlement-summary')).toBeFocused();
   await expect(transfers).toHaveCount(plan.length);
   for (const t of plan) {
     const row = transfers.filter({

@@ -5,11 +5,11 @@ import { formatMoney } from '@/lib/money/format-money';
 export function BalanceAmount({ netMinor, currency }: { netMinor: number; currency: string }) {
   const status = balanceStatus(netMinor);
   return (
-    <p className={`shrink-0 text-right font-semibold ${status.textClass}`}>
+    <p className={`shrink-0 text-right text-lg font-bold ${status.textClass}`}>
       <span aria-hidden="true">{status.icon} </span>
       <span className="sr-only">{status.label} </span>
       {formatMoney(magnitude(netMinor), currency)}
-      <span aria-hidden="true" className="block text-sm font-medium">
+      <span aria-hidden="true" className="block text-sm font-semibold">
         {status.label}
       </span>
     </p>

@@ -75,62 +75,31 @@ describe('design tokens contrast (WCAG AA)', () => {
 });
 
 /**
- * Legacy aliases (brand-*, surface, ink, line, danger-*) still style screens that were not
- * migrated yet. Resolve them from the real `@theme` block and check the pairs the screens use.
+ * The legacy aliases (brand-*, surface, ink, line, danger-*, page, radius-card) were removed when
+ * the last screens moved to the design tokens (issue #55). Keep them out so screens cannot drift
+ * back to a second palette.
  */
-const legacy = new Map(
-  [...css.matchAll(/--color-([a-z0-9-]+):\s*var\(--([a-z0-9-]+)\)\s*;/gi)].map((m) => [
-    m[1]!,
-    m[2]!,
-  ]),
-);
+describe('legacy token aliases', () => {
+  const legacyClass =
+    /\b(?:bg|text|border|ring|divide|outline|fill|stroke|from|to|via|border-l)-(?:brand-\d+|surface|ink|line|page|danger-\d+)\b|\brounded-card\b/;
 
-function legacyToken(name: string): string {
-  const target = legacy.get(name);
-  if (!target) throw new Error(`Legacy alias --color-${name} not found in globals.css`);
-  return token(target);
-}
-
-/** [foreground, background, minimum ratio, where it is used] with legacy alias names. */
-const legacyPairs: [string, string, number, string][] = [
-  ['ink', 'surface', TEXT, 'text on cards'],
-  ['ink', 'page', TEXT, 'text on the page'],
-  ['ink', 'brand-50', TEXT, 'text on selected options and notices'],
-  ['brand-700', 'surface', TEXT, 'links on cards'],
-  ['brand-700', 'page', TEXT, 'links on the page'],
-  ['brand-700', 'brand-50', TEXT, 'member "Dono" chip and open-group chip'],
-  ['danger-700', 'danger-50', TEXT, 'error boxes'],
-  ['danger-700', 'surface', TEXT, 'field errors on cards'],
-  ['danger-700', 'page', TEXT, 'field errors on the page'],
-  ['line', 'surface', UI, 'borders on cards'],
-  ['line', 'page', UI, 'borders on the page'],
-  ['brand-600', 'page', UI, 'selected option border'],
-];
-
-describe('legacy alias contrast (WCAG AA)', () => {
-  it.each(legacyPairs)('%s on %s is at least %d:1 (%s)', (fg, bg, minimum) => {
-    const ratio = contrastRatio(legacyToken(fg), legacyToken(bg));
-    expect(ratio, `${fg} on ${bg} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(minimum);
+  it('are no longer defined in globals.css', () => {
+    expect(css).not.toMatch(/--color-(brand-\d+|surface|ink|line|page|danger-\d+)\s*:/);
+    expect(css).not.toMatch(/--radius-card\s*:/);
   });
 
-  it('white on brand-600 and brand-700 (legacy link-styled buttons) is at least 4.5:1', () => {
-    for (const name of ['brand-600', 'brand-700']) {
-      expect(contrastRatio('#ffffff', legacyToken(name)), name).toBeGreaterThanOrEqual(TEXT);
-    }
-  });
-
-  it('keeps `line` as a border-only colour: it is a 3:1 border grey, too dark for a text fill', () => {
+  it('are not used by any component or page', () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir)) {
         const path = join(dir, entry);
         if (statSync(path).isDirectory()) walk(path);
         else if (/\.tsx?$/.test(entry) && !/\.spec\./.test(entry)) {
-          if (/\b(bg|divide)-line\b/.test(readFileSync(path, 'utf8'))) offenders.push(path);
+          if (legacyClass.test(readFileSync(path, 'utf8'))) offenders.push(path);
         }
       }
     };
     walk(new URL('../../', import.meta.url).pathname);
-    expect(offenders, 'use bg-muted (or Badge) instead of bg-line').toEqual([]);
+    expect(offenders, 'use the design tokens (border-border, bg-card, text-link...)').toEqual([]);
   });
 });

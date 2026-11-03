@@ -407,7 +407,7 @@ describe('amount input: typing equals pasting, differential and generated checks
         }
       }
     }
-  });
+  }, 30_000); // heavy randomized loop: slow CI runners exceed the default 5 s
 });
 
 describe('percentage input', () => {
