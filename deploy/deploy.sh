@@ -40,5 +40,5 @@ fi
 # The api container runs `prisma migrate deploy` before starting; --wait blocks until healthy.
 "${COMPOSE[@]}" up -d --remove-orphans --wait
 "${COMPOSE[@]}" exec -T nginx nginx -s reload
-echo "$PREVIOUS" > .previous-release
+[ "$PREVIOUS" = "$(git rev-parse HEAD)" ] || echo "$PREVIOUS" > .previous-release
 curl -fsS "https://$DOMAIN/login" -o /dev/null && echo "OK: https://$DOMAIN"
