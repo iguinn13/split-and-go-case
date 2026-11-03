@@ -11,6 +11,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
     /** Extra description ids (for example a hint paragraph), merged with the error id. */
     describedBy?: string;
     announceError?: boolean;
+    labelClassName?: string;
+    containerClassName?: string;
 }
 
 export const fieldClassName =
@@ -24,14 +26,16 @@ export function Input({
     className,
     describedBy,
     announceError,
+    labelClassName,
+    containerClassName,
     ...props
 }: InputProps) {
     const hintId = hint ? `${id}-hint` : undefined;
     const aria = fieldAria(id, Boolean(error), [hintId, describedBy].filter(Boolean).join(' '));
 
     return (
-        <div className="flex flex-col gap-1">
-            <label htmlFor={id} className="text-sm font-medium">
+        <div className={cn('flex flex-col gap-1', containerClassName)}>
+            <label htmlFor={id} className={cn('text-sm font-medium', labelClassName)}>
                 {label}
             </label>
             <input

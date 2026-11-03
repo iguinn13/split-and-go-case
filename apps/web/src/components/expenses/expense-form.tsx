@@ -476,44 +476,54 @@ export function ExpenseForm({
                                     </label>
                                     <div className="flex min-w-0 flex-wrap items-center gap-3">
                                         {checked && splitType !== 'EQUAL' ? (
-                                            <Input
-                                                id={`expense-share-${member.id}`}
-                                                label={
-                                                    splitType === 'PERCENTAGE'
-                                                        ? `Porcentagem de ${member.name} (%)`
-                                                        : `Valor de ${member.name} (${currency})`
-                                                }
-                                                inputMode="decimal"
-                                                autoComplete="off"
-                                                className="w-36"
-                                                value={values[member.id] ?? ''}
-                                                placeholder={
-                                                    splitType === 'PERCENTAGE'
-                                                        ? '0'
-                                                        : units === 0
-                                                          ? '0'
-                                                          : '0,00'
-                                                }
-                                                announceError
-                                                error={
-                                                    (splitType === 'PERCENTAGE'
-                                                        ? parsePercent(values[member.id] ?? '')
-                                                        : parseAmount(
-                                                              values[member.id] ?? '',
-                                                              units,
-                                                              currency,
-                                                          )
-                                                    ).error ?? undefined
-                                                }
-                                                onChange={(e) => {
-                                                    const next = e.target.value;
+                                            <div className="flex items-start gap-2">
+                                                <Input
+                                                    id={`expense-share-${member.id}`}
+                                                    label={
+                                                        splitType === 'PERCENTAGE'
+                                                            ? `Porcentagem de ${member.name} (%)`
+                                                            : `Valor de ${member.name} (${currency})`
+                                                    }
+                                                    inputMode="decimal"
+                                                    autoComplete="off"
+                                                    className="w-36"
+                                                    containerClassName="sm:w-36"
+                                                    labelClassName="sm:sr-only"
+                                                    value={values[member.id] ?? ''}
+                                                    placeholder={
+                                                        splitType === 'PERCENTAGE'
+                                                            ? '0'
+                                                            : units === 0
+                                                              ? '0'
+                                                              : '0,00'
+                                                    }
+                                                    announceError
+                                                    error={
+                                                        (splitType === 'PERCENTAGE'
+                                                            ? parsePercent(values[member.id] ?? '')
+                                                            : parseAmount(
+                                                                  values[member.id] ?? '',
+                                                                  units,
+                                                                  currency,
+                                                              )
+                                                        ).error ?? undefined
+                                                    }
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
 
-                                                    setValues((current) => ({
-                                                        ...current,
-                                                        [member.id]: next,
-                                                    }));
-                                                }}
-                                            />
+                                                        setValues((current) => ({
+                                                            ...current,
+                                                            [member.id]: next,
+                                                        }));
+                                                    }}
+                                                />
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="hidden min-h-11 items-center text-sm text-muted-foreground sm:flex"
+                                                >
+                                                    {splitType === 'PERCENTAGE' ? '%' : currency}
+                                                </span>
+                                            </div>
                                         ) : null}
                                         {checked && share ? (
                                             <span
