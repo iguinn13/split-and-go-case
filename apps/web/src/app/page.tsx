@@ -1,11 +1,10 @@
-import { Card } from '@/components/ui/card';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { SESSION_COOKIE } from '@/lib/auth/session';
 
-export default function HomePage() {
-    return (
-        <Card title="Bem-vindo ao Split&Go" as="h1">
-            <p className="text-muted-foreground">
-                Divida despesas em grupo e quite tudo com o mínimo de transferências.
-            </p>
-        </Card>
-    );
+/** The login screen is the entry point: signed-in users go straight to their groups. */
+export default async function HomePage() {
+    const hasSession = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
+
+    redirect(hasSession ? '/groups' : '/login');
 }
