@@ -61,10 +61,10 @@ flowchart TB
         e["e2e<br/>Playwright contra o stack Docker Compose<br/>(projeto splitgo-e2e, portas 13000/13001/15432,<br/>fx-stub no lugar do Frankfurter)"]
     end
 
-    subgraph prod["Publicação (NÃO implementada, task #22)"]
-        d["sem ambiente publicado"]
+    subgraph prod["Publicação (VM Oracle, task #22)"]
+        d["nginx :80/:443 + certbot<br/>web · api · postgres (docker-compose.prod.yml)"]
     end
-    ci -.->|"deploy não existe"| prod
+    ci -.->|"deploy manual por script"| prod
 ```
 
 Os testes e2e usam `apps/web/e2e/docker-compose.e2e.yml`, que troca o provedor de câmbio real por um stub local (`fx-stub`), de modo que nenhum teste depende da internet.
@@ -261,10 +261,11 @@ Base visual do front-end, no estilo de apps de rateio (identidade verde, listas 
 - `GET /health` verifica API e conexão com o banco.
 - Erros 5xx logados com stack; 4xx apenas com código.
 
-## 10. Hospedagem sugerida (bônus de deploy; NÃO implementada, task #22)
+## 10. Hospedagem (task #22)
 
-Proposta; não há deploy nem URL pública.
+Decisão do responsável: tudo em uma única VM (Oracle Cloud) com Docker Compose, em `https://splitandgo.duckdns.org`. Detalhes, deploy, rollback e backup em [`docs/engineering/deployment.md`](../engineering/deployment.md).
 
-- **Web:** Vercel.
-- **API + Postgres:** Render ou Railway, com migrations via `prisma migrate deploy` no release.
-- Variáveis: `DATABASE_URL`, `JWT_SECRET`, `API_URL` (web → API), `CORS_ORIGIN`, `FX_PROVIDER_URL` (padrão `https://api.frankfurter.dev/v1`).
+- **Stack:** `docker-compose.prod.yml` com `postgres` (volume persistente, sem porta publicada), `api`, `web` e `nginx` (único a publicar 80/443). TLS por Let's Encrypt (certbot, HTTP-01 webroot, renovação automática).
+- **Migrations:** `prisma migrate deploy` na subida da API, antes de aceitar tráfego.
+- **Segredos:** `.env` gerado no servidor, fora do repositório (modelo em `.env.production.example`).
+- Variáveis: `DATABASE_URL`, `JWT_SECRET`, `API_URL` (web → API, rede interna), `CORS_ORIGIN` (`https://$DOMAIN`), `FX_PROVIDER_URL` (padrão `https://api.frankfurter.dev/v1`), `WEB_TRUST_FORWARDED_HOST=1`.
