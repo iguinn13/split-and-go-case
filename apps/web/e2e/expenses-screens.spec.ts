@@ -111,3 +111,46 @@ test('group summary, tabs, dense list, pagination and long names fit in 360 px',
     await expect(page.getByText('Página 2 de 2')).toBeVisible();
     await expectNoHorizontalOverflow(page);
 });
+
+test('share inputs line up on desktop whatever the length of the member names', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const email = `align-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+
+    await page.goto('/register');
+    await page.getByLabel('Nome', { exact: true }).fill('Ana');
+    await page.getByLabel('E-mail', { exact: true }).fill(email);
+    await page.getByLabel('Senha', { exact: true }).fill('senha-e2e-123');
+    await page.getByRole('button', { name: 'Criar conta' }).click();
+    await expect(page).toHaveURL(/\/groups$/);
+    await page.getByRole('link', { name: 'Criar grupo' }).first().click();
+    await page.getByLabel('Nome do grupo').fill('Alinhamento');
+    await page.getByLabel('Nome do participante 1', { exact: true }).fill('Bia');
+    await page.getByRole('button', { name: 'Adicionar participante' }).click();
+    await page
+        .getByLabel('Nome do participante 2', { exact: true })
+        .fill('Maria Fernanda da Silva Albuquerque');
+    await page.getByRole('button', { name: 'Criar grupo' }).click();
+    await expect(page).toHaveURL(/\/groups\/[0-9a-f-]{36}$/);
+    const groupId = /\/groups\/([0-9a-f-]{36})/.exec(page.url())![1]!;
+
+    await page.goto(`/groups/${groupId}/expenses/new`);
+
+    for (const type of ['Por porcentagem', 'Por valor fixo']) {
+        await page.getByText(type, { exact: true }).click();
+        const inputs = page.locator('input[id^="expense-share-"]');
+
+        await expect(inputs).toHaveCount(3);
+        const boxes = await inputs.evaluateAll((els) =>
+            els.map((el) => {
+                const { x, width } = el.getBoundingClientRect();
+
+                return { right: Math.round(x + width), width: Math.round(width) };
+            }),
+        );
+
+        expect(new Set(boxes.map((b) => b.right)).size).toBe(1);
+        expect(new Set(boxes.map((b) => b.width)).size).toBe(1);
+    }
+});
