@@ -6,13 +6,14 @@ import { GroupsRepository } from './groups.repository.js';
 
 @Injectable()
 export class UpdateGroupUseCase {
-  constructor(
-    private readonly access: GroupAccessService,
-    private readonly groups: GroupsRepository,
-  ) {}
+    constructor(
+        private readonly access: GroupAccessService,
+        private readonly groups: GroupsRepository,
+    ) {}
 
-  async execute(userId: string, groupId: string, input: UpdateGroupInput): Promise<GroupView> {
-    await this.access.assertIsOwner(groupId, userId);
-    return toGroupView(await this.groups.updateGroup(groupId, input));
-  }
+    async execute(userId: string, groupId: string, input: UpdateGroupInput): Promise<GroupView> {
+        await this.access.assertIsOwner(groupId, userId);
+
+        return toGroupView(await this.groups.updateGroup(groupId, input));
+    }
 }

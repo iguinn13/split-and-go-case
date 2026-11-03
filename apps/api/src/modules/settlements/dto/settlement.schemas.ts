@@ -6,22 +6,22 @@ export const transferParamsSchema = z.object({ groupId: z.uuid(), transferId: z.
 export type TransferStatusView = 'PENDING' | 'PAID';
 
 export interface TransferView {
-  /** Null while the plan is calculated on the fly (group OPEN). */
-  id: string | null;
-  from: { memberId: string; name: string };
-  to: { memberId: string; name: string };
-  amountMinor: number;
-  /** Null while the group is OPEN. */
-  status: TransferStatusView | null;
-  paidAt: string | null;
+    /** Null while the plan is calculated on the fly (group OPEN). */
+    id: string | null;
+    from: { memberId: string; name: string };
+    to: { memberId: string; name: string };
+    amountMinor: number;
+    /** Null while the group is OPEN. */
+    status: TransferStatusView | null;
+    paidAt: string | null;
 }
 
 export interface SettlementPlanView {
-  groupId: string;
-  /** Group base currency. */
-  currency: string;
-  status: 'OPEN' | 'CLOSED';
-  transferCount: number;
-  totalMovedMinor: number;
-  transfers: TransferView[];
+    groupId: string;
+    /** Group base currency. */
+    currency: string;
+    status: 'OPEN' | 'CLOSED';
+    transferCount: number;
+    totalMovedMinor: number;
+    transfers: TransferView[];
 }

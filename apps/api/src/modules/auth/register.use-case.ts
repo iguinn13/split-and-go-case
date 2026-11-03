@@ -6,22 +6,24 @@ import { UsersRepository } from './users.repository.js';
 
 @Injectable()
 export class RegisterUseCase {
-  constructor(
-    private readonly users: UsersRepository,
-    private readonly passwords: PasswordService,
-  ) {}
+    constructor(
+        private readonly users: UsersRepository,
+        private readonly passwords: PasswordService,
+    ) {}
 
-  async execute(input: RegisterInput): Promise<UserView> {
-    const conflict = new AppError('EMAIL_ALREADY_IN_USE', 409, 'Email is already in use');
-    if (await this.users.findByEmail(input.email)) throw conflict;
+    async execute(input: RegisterInput): Promise<UserView> {
+        const conflict = new AppError('EMAIL_ALREADY_IN_USE', 409, 'Email is already in use');
 
-    const user = await this.users.createAndLinkPendingMembers({
-      name: input.name,
-      email: input.email,
-      passwordHash: await this.passwords.hash(input.password),
-    });
-    if (!user) throw conflict;
+        if (await this.users.findByEmail(input.email)) throw conflict;
 
-    return { id: user.id, name: user.name, email: user.email };
-  }
+        const user = await this.users.createAndLinkPendingMembers({
+            name: input.name,
+            email: input.email,
+            passwordHash: await this.passwords.hash(input.password),
+        });
+
+        if (!user) throw conflict;
+
+        return { id: user.id, name: user.name, email: user.email };
+    }
 }

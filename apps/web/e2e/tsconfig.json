@@ -1,12 +1,12 @@
 {
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2023", "DOM"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "noEmit": true,
-    "types": ["node"]
-  },
-  "include": ["./**/*.ts"]
+    "extends": "../../../tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2023", "DOM"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "noEmit": true,
+        "types": ["node"]
+    },
+    "include": ["./**/*.ts"]
 }

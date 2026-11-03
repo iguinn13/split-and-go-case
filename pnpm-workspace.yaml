@@ -1,9 +1,9 @@
 packages:
-  - apps/*
-  - packages/*
+    - apps/*
+    - packages/*
 allowBuilds:
-  '@parcel/watcher': false
-  '@prisma/engines': true
-  '@swc/core': true
-  esbuild: false
-  prisma: true
+    '@parcel/watcher': false
+    '@prisma/engines': true
+    '@swc/core': true
+    esbuild: false
+    prisma: true

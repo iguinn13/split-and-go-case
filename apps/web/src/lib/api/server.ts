@@ -12,15 +12,18 @@ export { SESSION_EXPIRED_PATH };
  * that confirms the rejection and signs out (a POST) before landing on /login.
  */
 export async function serverApi<T>(
-  path: string,
-  options: Omit<ApiRequestOptions, 'token'> = {},
+    path: string,
+    options: Omit<ApiRequestOptions, 'token'> = {},
 ): Promise<T> {
-  const token = await getSessionToken();
-  if (!token) redirect(SESSION_EXPIRED_PATH);
-  try {
-    return await apiFetch<T>(path, { ...options, token });
-  } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 401) redirect(SESSION_EXPIRED_PATH);
-    throw error;
-  }
+    const token = await getSessionToken();
+
+    if (!token) redirect(SESSION_EXPIRED_PATH);
+
+    try {
+        return await apiFetch<T>(path, { ...options, token });
+    } catch (error) {
+        if (error instanceof ApiError && error.statusCode === 401) redirect(SESSION_EXPIRED_PATH);
+
+        throw error;
+    }
 }

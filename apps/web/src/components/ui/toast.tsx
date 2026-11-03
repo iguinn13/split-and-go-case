@@ -9,20 +9,19 @@ import { Toaster as Sonner, toast } from 'sonner';
  * the user: keep inline `role="alert"` messages for forms.
  */
 export function Toaster() {
-  return (
-    <Sonner
-      position="bottom-center"
-      closeButton
-      containerAriaLabel="Notificações"
-      toastOptions={{
-        classNames: {
-          toast:
-            '!rounded-lg !border !border-border !bg-card !text-card-foreground !shadow-pop !font-sans',
-          description: '!text-muted-foreground',
-        },
-      }}
-    />
-  );
+    return (
+        <Sonner
+            position="bottom-center"
+            closeButton
+            containerAriaLabel="Notificações"
+            toastOptions={{
+                classNames: {
+                    toast: '!rounded-lg !border !border-border !bg-card !text-card-foreground !shadow-pop !font-sans',
+                    description: '!text-muted-foreground',
+                },
+            }}
+        />
+    );
 }
 
 export { toast };

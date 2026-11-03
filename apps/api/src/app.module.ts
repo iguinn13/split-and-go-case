@@ -13,18 +13,18 @@ import { HealthModule } from './modules/health/health.module.js';
 import { SettlementsModule } from './modules/settlements/settlements.module.js';
 
 @Module({
-  imports: [
-    ConfigModule,
-    PrismaModule,
-    HealthModule,
-    AuthModule,
-    GroupsModule,
-    ExpensesModule,
-    BalancesModule,
-    SettlementsModule,
-    CurrenciesModule,
-    ExchangeRatesModule,
-  ],
-  providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
+    imports: [
+        ConfigModule,
+        PrismaModule,
+        HealthModule,
+        AuthModule,
+        GroupsModule,
+        ExpensesModule,
+        BalancesModule,
+        SettlementsModule,
+        CurrenciesModule,
+        ExchangeRatesModule,
+    ],
+    providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })
 export class AppModule {}

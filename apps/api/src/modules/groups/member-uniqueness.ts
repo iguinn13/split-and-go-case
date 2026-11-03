@@ -1,8 +1,8 @@
 import type { ErrorDetail } from '../../common/errors/app-error.js';
 
 export interface MemberIdentity {
-  name: string;
-  email: string | null;
+    name: string;
+    email: string | null;
 }
 
 /**
@@ -11,30 +11,38 @@ export interface MemberIdentity {
  * `incoming` ones are reported with `pathPrefix` + their index.
  */
 export function findDuplicateMemberFields(
-  existing: readonly MemberIdentity[],
-  incoming: readonly MemberIdentity[],
-  pathPrefix: (index: number) => string,
+    existing: readonly MemberIdentity[],
+    incoming: readonly MemberIdentity[],
+    pathPrefix: (index: number) => string,
 ): ErrorDetail[] {
-  const names = new Set(existing.map((member) => member.name.toLowerCase()));
-  const emails = new Set(
-    existing.flatMap((member) => (member.email ? [member.email.toLowerCase()] : [])),
-  );
-  const details: ErrorDetail[] = [];
+    const names = new Set(existing.map((member) => member.name.toLowerCase()));
+    const emails = new Set(
+        existing.flatMap((member) => (member.email ? [member.email.toLowerCase()] : [])),
+    );
+    const details: ErrorDetail[] = [];
 
-  incoming.forEach((member, index) => {
-    const name = member.name.toLowerCase();
-    if (names.has(name)) {
-      details.push({ path: `${pathPrefix(index)}name`, message: 'Duplicate member name' });
-    }
-    names.add(name);
+    incoming.forEach((member, index) => {
+        const name = member.name.toLowerCase();
 
-    if (member.email) {
-      const email = member.email.toLowerCase();
-      if (emails.has(email)) {
-        details.push({ path: `${pathPrefix(index)}email`, message: 'Duplicate member email' });
-      }
-      emails.add(email);
-    }
-  });
-  return details;
+        if (names.has(name)) {
+            details.push({ path: `${pathPrefix(index)}name`, message: 'Duplicate member name' });
+        }
+
+        names.add(name);
+
+        if (member.email) {
+            const email = member.email.toLowerCase();
+
+            if (emails.has(email)) {
+                details.push({
+                    path: `${pathPrefix(index)}email`,
+                    message: 'Duplicate member email',
+                });
+            }
+
+            emails.add(email);
+        }
+    });
+
+    return details;
 }

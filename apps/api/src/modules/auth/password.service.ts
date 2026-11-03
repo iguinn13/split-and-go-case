@@ -6,11 +6,11 @@ export const BCRYPT_COST = 12;
 
 @Injectable()
 export class PasswordService {
-  hash(password: string): Promise<string> {
-    return bcrypt.hash(password, BCRYPT_COST);
-  }
+    hash(password: string): Promise<string> {
+        return bcrypt.hash(password, BCRYPT_COST);
+    }
 
-  verify(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
-  }
+    verify(password: string, hash: string): Promise<boolean> {
+        return bcrypt.compare(password, hash);
+    }
 }

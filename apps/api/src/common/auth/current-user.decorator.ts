@@ -7,9 +7,11 @@ export type RequestWithUser = Request & { user?: AuthenticatedUser };
 
 /** Injects the user authenticated by `JwtAuthGuard`. */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): AuthenticatedUser => {
-    const user = context.switchToHttp().getRequest<RequestWithUser>().user;
-    if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
-    return user;
-  },
+    (_data: unknown, context: ExecutionContext): AuthenticatedUser => {
+        const user = context.switchToHttp().getRequest<RequestWithUser>().user;
+
+        if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+
+        return user;
+    },
 );

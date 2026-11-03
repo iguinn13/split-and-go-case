@@ -10,32 +10,35 @@ import type { CurrencyOption } from '@/lib/groups/types';
 export const metadata = { title: 'Novo grupo | Split&Go' };
 
 export default async function NewGroupPage() {
-  let currencies: CurrencyOption[];
-  try {
-    currencies = await serverApi<CurrencyOption[]>('/currencies');
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
+    let currencies: CurrencyOption[];
+
+    try {
+        currencies = await serverApi<CurrencyOption[]>('/currencies');
+    } catch (error) {
+        if (!(error instanceof ApiError)) throw error;
+
+        return (
+            <ErrorState
+                title="Não foi possível carregar as moedas"
+                message={errorMessage(error.code)}
+                action={
+                    <Link href="/groups/new" className={buttonVariants({ variant: 'secondary' })}>
+                        Tentar novamente
+                    </Link>
+                }
+            />
+        );
+    }
+
     return (
-      <ErrorState
-        title="Não foi possível carregar as moedas"
-        message={errorMessage(error.code)}
-        action={
-          <Link href="/groups/new" className={buttonVariants({ variant: 'secondary' })}>
-            Tentar novamente
-          </Link>
-        }
-      />
+        <div className="flex flex-col gap-4">
+            <PageHeader
+                title="Novo grupo"
+                backHref="/groups"
+                backLabel="Voltar aos grupos"
+                description="Defina o nome, a moeda e quem participa. Você entra como dono."
+            />
+            <CreateGroupForm currencies={currencies} />
+        </div>
     );
-  }
-  return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        title="Novo grupo"
-        backHref="/groups"
-        backLabel="Voltar aos grupos"
-        description="Defina o nome, a moeda e quem participa. Você entra como dono."
-      />
-      <CreateGroupForm currencies={currencies} />
-    </div>
-  );
 }

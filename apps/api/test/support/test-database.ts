@@ -16,24 +16,24 @@ export const EXAMPLE_DATABASE_URL = 'postgresql://splitgo:splitgo@localhost:5432
 
 const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1', 'postgres', 'db']);
 const ALLOWED_QUERY_KEYS = new Set([
-  'schema',
-  'sslmode',
-  'connection_limit',
-  'pool_timeout',
-  'connect_timeout',
+    'schema',
+    'sslmode',
+    'connection_limit',
+    'pool_timeout',
+    'connect_timeout',
 ]);
 const FORBIDDEN_DB_NAME = /(^|[^a-z])(prod|production|live|staging|main)([^a-z]|$)/i;
 
 export class UnsafeTestDatabaseError extends Error {
-  constructor(reason: string) {
-    super(
-      `Refusing to run the API tests: ${reason}.\n` +
-        `Recusando rodar os testes da API: defina DATABASE_URL explicitamente para um banco local ou descartavel, ` +
-        `por exemplo:\n  DATABASE_URL=${EXAMPLE_DATABASE_URL} pnpm test\n` +
-        `(host permitido: localhost, 127.0.0.1, ::1, postgres, db; o nome do banco nao pode parecer producao).`,
-    );
-    this.name = 'UnsafeTestDatabaseError';
-  }
+    constructor(reason: string) {
+        super(
+            `Refusing to run the API tests: ${reason}.\n` +
+                `Recusando rodar os testes da API: defina DATABASE_URL explicitamente para um banco local ou descartavel, ` +
+                `por exemplo:\n  DATABASE_URL=${EXAMPLE_DATABASE_URL} pnpm test\n` +
+                `(host permitido: localhost, 127.0.0.1, ::1, postgres, db; o nome do banco nao pode parecer producao).`,
+        );
+        this.name = 'UnsafeTestDatabaseError';
+    }
 }
 
 /**
@@ -41,35 +41,47 @@ export class UnsafeTestDatabaseError extends Error {
  * include the host and database name, never the raw URL, user or password.
  */
 export function resolveTestDatabaseUrl(env: Record<string, string | undefined>): string {
-  const raw = env['DATABASE_URL']?.trim();
-  if (!raw) throw new UnsafeTestDatabaseError('DATABASE_URL is not set');
+    const raw = env['DATABASE_URL']?.trim();
 
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new UnsafeTestDatabaseError('DATABASE_URL is not a valid URL');
-  }
-  if (url.protocol !== 'postgresql:' && url.protocol !== 'postgres:') {
-    throw new UnsafeTestDatabaseError('DATABASE_URL must use the postgresql:// protocol');
-  }
-  if (!ALLOWED_HOSTS.has(url.hostname.toLowerCase())) {
-    throw new UnsafeTestDatabaseError(`host "${url.hostname}" is not a local or test host`);
-  }
-  for (const key of new Set(url.searchParams.keys())) {
-    if (!ALLOWED_QUERY_KEYS.has(key)) {
-      throw new UnsafeTestDatabaseError(`query parameter "${key}" is not allowed in DATABASE_URL`);
+    if (!raw) throw new UnsafeTestDatabaseError('DATABASE_URL is not set');
+
+    let url: URL;
+
+    try {
+        url = new URL(raw);
+    } catch {
+        throw new UnsafeTestDatabaseError('DATABASE_URL is not a valid URL');
     }
-  }
-  let dbName: string;
-  try {
-    dbName = decodeURIComponent(url.pathname.replace(/^\//, ''));
-  } catch {
-    throw new UnsafeTestDatabaseError('DATABASE_URL has an invalid database name');
-  }
-  if (!dbName) throw new UnsafeTestDatabaseError('DATABASE_URL has no database name');
-  if (FORBIDDEN_DB_NAME.test(dbName)) {
-    throw new UnsafeTestDatabaseError(`database "${dbName}" looks like a production database`);
-  }
-  return url.href;
+
+    if (url.protocol !== 'postgresql:' && url.protocol !== 'postgres:') {
+        throw new UnsafeTestDatabaseError('DATABASE_URL must use the postgresql:// protocol');
+    }
+
+    if (!ALLOWED_HOSTS.has(url.hostname.toLowerCase())) {
+        throw new UnsafeTestDatabaseError(`host "${url.hostname}" is not a local or test host`);
+    }
+
+    for (const key of new Set(url.searchParams.keys())) {
+        if (!ALLOWED_QUERY_KEYS.has(key)) {
+            throw new UnsafeTestDatabaseError(
+                `query parameter "${key}" is not allowed in DATABASE_URL`,
+            );
+        }
+    }
+
+    let dbName: string;
+
+    try {
+        dbName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+    } catch {
+        throw new UnsafeTestDatabaseError('DATABASE_URL has an invalid database name');
+    }
+
+    if (!dbName) throw new UnsafeTestDatabaseError('DATABASE_URL has no database name');
+
+    if (FORBIDDEN_DB_NAME.test(dbName)) {
+        throw new UnsafeTestDatabaseError(`database "${dbName}" looks like a production database`);
+    }
+
+    return url.href;
 }

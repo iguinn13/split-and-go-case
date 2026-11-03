@@ -15,72 +15,82 @@ const bodySchema = z.object({ name: z.string().min(1) });
 @Public()
 @Controller('probe')
 class ProbeController {
-  @Post()
-  create(@Body(new ZodValidationPipe(bodySchema)) body: z.infer<typeof bodySchema>) {
-    return body;
-  }
+    @Post()
+    create(@Body(new ZodValidationPipe(bodySchema)) body: z.infer<typeof bodySchema>) {
+        return body;
+    }
 
-  @Get('app-error')
-  appError(): never {
-    throw new AppError('GROUP_CLOSED', 409, 'Group is closed');
-  }
+    @Get('app-error')
+    appError(): never {
+        throw new AppError('GROUP_CLOSED', 409, 'Group is closed');
+    }
 
-  @Get('boom')
-  boom(): never {
-    throw new Error('secret database detail');
-  }
+    @Get('boom')
+    boom(): never {
+        throw new Error('secret database detail');
+    }
 }
 
 @Module({ controllers: [ProbeController] })
 class ProbeModule {}
 
 describe('API base (e2e)', () => {
-  let app: INestApplication;
-  const server = (): Server => app.getHttpServer() as Server;
+    let app: INestApplication;
+    const server = (): Server => app.getHttpServer() as Server;
 
-  beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, ProbeModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    await app.init();
-  });
+    beforeAll(async () => {
+        const moduleRef = await Test.createTestingModule({
+            imports: [AppModule, ProbeModule],
+        }).compile();
 
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('GET /health returns 200 with database up', async () => {
-    const res = await request(server()).get('/health').expect(200);
-    expect(res.body).toEqual({ status: 'ok', database: 'up' });
-  });
-
-  it('returns 422 VALIDATION_ERROR with details', async () => {
-    const res = await request(server()).post('/probe').send({}).expect(422);
-    expect(res.body).toMatchObject({
-      statusCode: 422,
-      code: 'VALIDATION_ERROR',
-      message: 'Invalid request data',
-      details: [{ path: 'name' }],
+        app = moduleRef.createNestApplication();
+        await app.init();
     });
-  });
 
-  it('formats AppError', async () => {
-    const res = await request(server()).get('/probe/app-error').expect(409);
-    expect(res.body).toEqual({ statusCode: 409, code: 'GROUP_CLOSED', message: 'Group is closed' });
-  });
-
-  it('turns unknown errors into 500 INTERNAL_ERROR without leaking details', async () => {
-    const res = await request(server()).get('/probe/boom').expect(500);
-    expect(res.body).toEqual({
-      statusCode: 500,
-      code: 'INTERNAL_ERROR',
-      message: 'Internal server error',
+    afterAll(async () => {
+        await app.close();
     });
-  });
 
-  it('returns NOT_FOUND for unknown routes', async () => {
-    const res = await request(server()).get('/nope').expect(404);
-    expect((res.body as ErrorResponse).code).toBe('NOT_FOUND');
-  });
+    it('GET /health returns 200 with database up', async () => {
+        const res = await request(server()).get('/health').expect(200);
+
+        expect(res.body).toEqual({ status: 'ok', database: 'up' });
+    });
+
+    it('returns 422 VALIDATION_ERROR with details', async () => {
+        const res = await request(server()).post('/probe').send({}).expect(422);
+
+        expect(res.body).toMatchObject({
+            statusCode: 422,
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request data',
+            details: [{ path: 'name' }],
+        });
+    });
+
+    it('formats AppError', async () => {
+        const res = await request(server()).get('/probe/app-error').expect(409);
+
+        expect(res.body).toEqual({
+            statusCode: 409,
+            code: 'GROUP_CLOSED',
+            message: 'Group is closed',
+        });
+    });
+
+    it('turns unknown errors into 500 INTERNAL_ERROR without leaking details', async () => {
+        const res = await request(server()).get('/probe/boom').expect(500);
+
+        expect(res.body).toEqual({
+            statusCode: 500,
+            code: 'INTERNAL_ERROR',
+            message: 'Internal server error',
+        });
+    });
+
+    it('returns NOT_FOUND for unknown routes', async () => {
+        const res = await request(server()).get('/nope').expect(404);
+
+        expect((res.body as ErrorResponse).code).toBe('NOT_FOUND');
+    });
 });

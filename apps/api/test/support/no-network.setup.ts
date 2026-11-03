@@ -6,12 +6,15 @@ import { beforeEach } from 'vitest';
  * (vi.stubGlobal) replace this guard for their own scope.
  */
 const realFetch = globalThis.fetch;
+
 beforeEach(() => {
-  globalThis.fetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
-    if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname)) {
-      return Promise.reject(new Error(`Network access is blocked in tests: ${url.hostname}`));
-    }
-    return realFetch(input, init);
-  };
+    globalThis.fetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+
+        if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname)) {
+            return Promise.reject(new Error(`Network access is blocked in tests: ${url.hostname}`));
+        }
+
+        return realFetch(input, init);
+    };
 });
