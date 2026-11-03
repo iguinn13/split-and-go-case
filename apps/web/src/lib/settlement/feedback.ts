@@ -13,7 +13,6 @@ export type SettlementEvent =
 /** Events older than this are stale (e.g. a refresh that never happened) and are ignored. */
 export const EVENT_TTL_MS = 10_000;
 
-/** The subset of `Storage` used here (tests pass a fake). */
 export interface EventStorage {
     getItem(key: string): string | null;
     setItem(key: string, value: string): void;
@@ -39,7 +38,6 @@ export function rememberEvent(
     safely(() => storage.setItem(FEEDBACK_KEY, JSON.stringify({ ...event, ts: now })));
 }
 
-/** Returns and clears the pending event of this group; events of other groups are kept. */
 export function takeEvent(
     storage: EventStorage,
     groupId: string,

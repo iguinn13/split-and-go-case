@@ -1,7 +1,6 @@
 import { ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** Split&Go wordmark: a Lucide icon on a green tile plus the name in text (own, simple mark). */
 export function Wordmark({ className }: { className?: string }) {
     return (
         <span

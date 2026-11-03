@@ -6,19 +6,16 @@ import { ExpensesRepository } from './expenses.repository.js';
 export interface ExpenseForBalance {
     id: string;
     description: string;
-    /** YYYY-MM-DD */
     occurredOn: string;
     currency: string;
     originalAmountMinor: number;
     /** Decimal string with 8 fraction digits. */
     exchangeRate: string;
-    /** Converted amount, in the group base currency. */
     amountMinor: number;
     paidByMemberId: string;
     shares: { memberId: string; amountMinor: number }[];
 }
 
-/** Public read port of the expenses module for other modules. */
 @Injectable()
 export class ExpensesService {
     constructor(private readonly expenses: ExpensesRepository) {}

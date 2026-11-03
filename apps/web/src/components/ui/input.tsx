@@ -6,12 +6,10 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
     /** Explicit, whitespace-free id: it links the label, the hint and the error message. */
     id: string;
     label: string;
-    /** Help text under the field, linked through aria-describedby. */
     hint?: string;
     error?: string;
     /** Extra description ids (for example a hint paragraph), merged with the error id. */
     describedBy?: string;
-    /** Announce the error to screen readers as soon as it appears (live validation). */
     announceError?: boolean;
 }
 

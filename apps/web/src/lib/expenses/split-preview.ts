@@ -88,7 +88,6 @@ export type SplitDraft =
 export interface PreviewInput {
     currency: string;
     baseCurrency: string;
-    /** Null while the amount field is empty or invalid. */
     originalAmountMinor: bigint | null;
     /** Rate text as typed (comma or dot); ignored when the currency equals the base. */
     exchangeRate: string;

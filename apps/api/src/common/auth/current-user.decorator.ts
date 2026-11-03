@@ -5,7 +5,6 @@ import type { AuthenticatedUser } from './authenticated-user.js';
 
 export type RequestWithUser = Request & { user?: AuthenticatedUser };
 
-/** Injects the user authenticated by `JwtAuthGuard`. */
 export const CurrentUser = createParamDecorator(
     (_data: unknown, context: ExecutionContext): AuthenticatedUser => {
         const user = context.switchToHttp().getRequest<RequestWithUser>().user;

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-/** True when `value` is a UUID accepted by the API (`z.uuid()`). */
 export function isUuid(value: string): boolean {
     return z.uuid().safeParse(value).success;
 }
@@ -14,7 +13,6 @@ export function invalidParam(): NextResponse {
     );
 }
 
-/** Validates route params; returns an error response on the first malformed UUID. */
 export function guardUuids(...values: string[]): NextResponse | null {
     return values.every(isUuid) ? null : invalidParam();
 }

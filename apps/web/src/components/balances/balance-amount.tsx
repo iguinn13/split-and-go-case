@@ -1,7 +1,6 @@
 import { balanceStatus, magnitude } from '@/lib/balances/status';
 import { formatMoney } from '@/lib/money/format-money';
 
-/** Net balance as sign/icon + amount + textual label, colored but never color-only. */
 export function BalanceAmount({ netMinor, currency }: { netMinor: number; currency: string }) {
     const status = balanceStatus(netMinor);
 

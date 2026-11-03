@@ -16,7 +16,6 @@ export function assertAmountInRange(amountMinor: number): void {
     }
 }
 
-/** Parses a decimal rate string into an integer scaled by 10^8. Throws EXCHANGE_RATE_INVALID. */
 export function parseExchangeRate(rate: string): bigint {
     if (!RATE_PATTERN.test(rate)) {
         throw new AppError('EXCHANGE_RATE_INVALID', 422, 'Exchange rate format is invalid');

@@ -29,15 +29,12 @@ export interface CalculateSharesInput {
 
 export interface ExpenseShare {
     memberId: string;
-    /** Share in the expense currency. */
     originalAmountMinor: number;
-    /** Share in the group's base currency. */
     amountMinor: number;
 }
 
 export interface CalculatedSplit {
     exchangeRate: string;
-    /** Converted total, in the base currency. */
     amountMinor: number;
     shares: ExpenseShare[];
 }

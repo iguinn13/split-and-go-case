@@ -10,7 +10,6 @@ export interface BalanceExpense {
     currency: string;
     originalAmountMinor: number;
     exchangeRate: string;
-    /** Converted amount, in the group base currency. */
     amountMinor: number;
     paidByMemberId: string;
     shares: { memberId: string; amountMinor: number }[];
@@ -28,7 +27,6 @@ export interface StatementLine {
     description: string;
     occurredOn: string;
     original: { currency: string; amountMinor: number; exchangeRate: string } | null;
-    /** Converted total of the expense in the group base currency (persisted value). */
     amountMinor: number;
     paidMinor: number;
     owedMinor: number;
@@ -50,7 +48,6 @@ export class BalanceInvariantError extends Error {
     }
 }
 
-/** Returns one balance per member id, in the order of `memberIds`. */
 export function calculateBalances(
     memberIds: readonly string[],
     expenses: readonly BalanceExpense[],

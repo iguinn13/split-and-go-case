@@ -1,5 +1,3 @@
-/** WCAG 2.x contrast helpers (used by the token contrast test). */
-
 export function parseHex(hex: string): [number, number, number] {
     const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
 

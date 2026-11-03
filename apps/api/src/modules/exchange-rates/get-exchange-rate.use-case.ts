@@ -82,7 +82,6 @@ export class GetExchangeRateUseCase {
         return value;
     }
 
-    /** Drops expired entries (they are the first ones in insertion order). */
     private sweepExpired(now: number): void {
         for (const [key, entry] of this.cache) {
             if (entry.expiresAt > now) break;

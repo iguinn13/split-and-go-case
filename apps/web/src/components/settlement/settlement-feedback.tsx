@@ -15,7 +15,6 @@ export function SettlementFeedback({
     children,
 }: {
     groupId: string;
-    /** "x de y pagas" for a closed group with transfers, otherwise null. */
     summary: string | null;
     children: ReactNode;
 }) {

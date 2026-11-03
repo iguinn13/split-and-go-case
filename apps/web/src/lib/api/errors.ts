@@ -3,7 +3,6 @@ export interface ApiErrorDetail {
     message: string;
 }
 
-/** Application error built from the API error contract (api-contract.md). */
 export class ApiError extends Error {
     constructor(
         readonly statusCode: number,
@@ -44,7 +43,6 @@ const MESSAGES: Record<string, string> = {
     INTERNAL_ERROR: FALLBACK,
 };
 
-/** Friendly pt-BR message for an API error code. */
 export function errorMessage(code: string): string {
     return MESSAGES[code] ?? FALLBACK;
 }

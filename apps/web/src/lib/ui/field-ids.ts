@@ -1,8 +1,5 @@
-/** Element ids and ARIA wiring shared by the form field components. */
 export interface FieldAria {
-    /** Id of the error paragraph; rendered only when there is an error. */
     errorId: string;
-    /** Value for `aria-describedby`: hint ids first, then the error id when present. */
     describedBy: string | undefined;
 }
 
@@ -19,7 +16,6 @@ export function assertValidFieldId(id: string): void {
     }
 }
 
-/** Builds the error id and merges it with the caller's hint ids in `aria-describedby`. */
 export function fieldAria(id: string, hasError: boolean, hintIds?: string): FieldAria {
     assertValidFieldId(id);
     const errorId = `${id}-error`;

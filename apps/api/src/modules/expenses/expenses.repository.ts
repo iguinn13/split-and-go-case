@@ -83,7 +83,6 @@ export class ExpensesRepository {
         });
     }
 
-    /** Replaces the expense fields and all of its shares (RF-EXP-04). */
     replace(groupId: string, expenseId: string, data: ExpenseData): Promise<ExpenseWithShares> {
         return this.prisma.$transaction(async (tx) => {
             await this.lockOpenGroup(tx, groupId);

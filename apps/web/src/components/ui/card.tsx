@@ -8,7 +8,6 @@ export function Card({
     className,
 }: {
     title?: string;
-    /** Heading level of the title: use `h1` when the card is the page's main heading. */
     as?: 'h1' | 'h2';
     children: ReactNode;
     className?: string;

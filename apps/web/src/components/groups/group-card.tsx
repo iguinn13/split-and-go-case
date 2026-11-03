@@ -4,7 +4,6 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { GroupSummary } from '@/lib/groups/types';
 
-/** Summary card of one group in the list: name, base currency, participants and status. */
 export function GroupCard({ group }: { group: GroupSummary }) {
     const open = group.status === 'OPEN';
     const count = `${group.memberCount} ${group.memberCount === 1 ? 'participante' : 'participantes'}`;

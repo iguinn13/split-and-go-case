@@ -15,7 +15,6 @@ export class GroupsRepository {
         });
     }
 
-    /** Groups where the user is owner or a linked member, newest first. */
     listForUser(userId: string) {
         return this.prisma.group.findMany({
             where: { OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
@@ -38,7 +37,6 @@ export class GroupsRepository {
         });
     }
 
-    /** Maps lowercase emails to user ids for the registered users among `emails`. */
     async findUserIdsByEmails(emails: string[]): Promise<Map<string, string>> {
         if (emails.length === 0) return new Map();
 

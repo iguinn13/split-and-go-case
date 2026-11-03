@@ -124,7 +124,6 @@ export function buildExpensePayloadSchema(baseCurrency?: string) {
 
 export type ExpensePayload = z.infer<ReturnType<typeof buildExpensePayloadSchema>>;
 
-/** Currency codes accepted by `GET /exchange-rates` proxies. */
 export const currencyCodeSchema = z.enum(Object.keys(CURRENCIES) as [string, ...string[]]);
 
 export const exchangeRateQuerySchema = z.object({

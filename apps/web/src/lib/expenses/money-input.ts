@@ -8,7 +8,6 @@ export function minorUnitsOf(currency: string): number {
     return isCurrencyCode(currency) ? CURRENCIES[currency].minorUnits : 2;
 }
 
-/** Result of reading amount text: minor units, or why the text cannot be read. */
 export type AmountParse =
     /** `thousandsHint` marks the ambiguous "1.234" shape (single separator + 3 digits, read as thousands). */
     | { ok: true; minor: bigint; error: null; thousandsHint: boolean }
@@ -157,14 +156,12 @@ export function parseAmount(text: string, units: number, currency?: string): Amo
     return { ok: true, minor: BigInt(digits), error: null, thousandsHint };
 }
 
-/** Minor units of the amount text, or null when it is empty or invalid. */
 export function parseAmountInput(text: string, units: number, currency?: string): bigint | null {
     const result = parseAmount(text, units, currency);
 
     return result.ok ? result.minor : null;
 }
 
-/** Canonical editable text for minor units ("123450" -> "1234,50"), with no thousands marks. */
 export function amountInputText(minor: number | bigint, units: number): string {
     const digits = String(minor).padStart(units + 1, '0');
 
@@ -200,14 +197,12 @@ export function parsePercent(text: string): AmountParse {
     return { ok: true, minor: BigInt(digits), error: null, thousandsHint: false };
 }
 
-/** Basis points of a percentage text, or null when empty or invalid. */
 export function parsePercentInput(text: string): bigint | null {
     const result = parsePercent(text);
 
     return result.ok ? result.minor : null;
 }
 
-/** Formats basis points as pt-BR percentage text ("33,33%"). */
 export function formatBasisPoints(basisPoints: bigint): string {
     const negative = basisPoints < 0n;
     const digits = (negative ? -basisPoints : basisPoints).toString().padStart(3, '0');
@@ -237,7 +232,6 @@ export function sanitizeRateInput(text: string): string {
     return separator ? `${integer},${fraction}` : integer;
 }
 
-/** Decimal text for the API ("5,4325" -> "5.4325"), or null when it is not a valid positive rate. */
 export function toApiRate(text: string): string | null {
     const normalized = text.trim().replace(',', '.');
 
@@ -248,7 +242,6 @@ export function toApiRate(text: string): string | null {
     return normalized;
 }
 
-/** "5.43250000" -> "5,4325" (field and display text). */
 export function displayRate(apiRate: string): string {
     const trimmed = apiRate.includes('.') ? apiRate.replace(/0+$/, '').replace(/\.$/, '') : apiRate;
 

@@ -26,9 +26,7 @@ export const buttonVariants = cva(
 );
 
 export interface ButtonProps extends ComponentProps<'button'>, VariantProps<typeof buttonVariants> {
-    /** Shows a spinner, sets aria-busy and blocks clicks while keeping the label visible. */
     loading?: boolean;
-    /** Decorative icon rendered before the label (use aria-label for icon-only buttons). */
     icon?: ReactNode;
 }
 
