@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { guardMutation } from '@/lib/http/guard';
 import { SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth/session';
 
-/** Clears the session cookie and sends the user to the login screen. */
 export function POST(request: Request) {
     // The form posts without a body, so only the Origin check applies.
     const blocked = guardMutation(request, { json: false });

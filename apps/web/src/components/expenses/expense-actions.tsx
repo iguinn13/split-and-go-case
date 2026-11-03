@@ -13,7 +13,6 @@ interface Props {
     description: string;
 }
 
-/** Edit link plus a two-step delete (confirmation before the request). */
 export function ExpenseActions({ groupId, expenseId, description }: Props) {
     const router = useRouter();
     const [confirming, setConfirming] = useState(false);

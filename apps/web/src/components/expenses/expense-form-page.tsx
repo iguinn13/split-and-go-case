@@ -8,7 +8,6 @@ import { ApiError, errorMessage } from '@/lib/api';
 import { expensesHref } from '@/lib/expenses/format';
 import { loadExpenseFormData } from '@/lib/expenses/load-form-data';
 
-/** Shared body of the "new expense" and "edit expense" pages (states: error, blocked, form). */
 export async function ExpenseFormPage({
     groupId,
     expenseId,

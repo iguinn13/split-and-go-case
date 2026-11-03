@@ -71,7 +71,6 @@ function addDuplicateIssues(members: MemberFormInput[], ctx: z.RefinementCtx) {
     });
 }
 
-/** Add-member form: also checks against the members already in the group. */
 export function buildAddMemberSchema(existing: { name: string; email: string | null }[]) {
     return memberSchema.superRefine((value, ctx) => {
         const name = value.name.trim().toLowerCase();
@@ -96,7 +95,6 @@ export function buildAddMemberSchema(existing: { name: string; email: string | n
     });
 }
 
-/** Maps a Zod error to `{ "a.b.c": first message }`. */
 export function pathErrors(error: z.ZodError): Record<string, string> {
     const result: Record<string, string> = {};
 
@@ -109,7 +107,6 @@ export function pathErrors(error: z.ZodError): Record<string, string> {
     return result;
 }
 
-/** Payload for POST /groups: blank rows are dropped, empty optionals are omitted. */
 export function toCreateGroupPayload(input: CreateGroupFormInput) {
     return {
         name: input.name,
@@ -122,7 +119,6 @@ export function toCreateGroupPayload(input: CreateGroupFormInput) {
     };
 }
 
-/** Removes untouched blank rows from the dynamic list before validation. */
 export function dropBlankMembers<T extends { name: string; email: string }>(members: T[]): T[] {
     return members.filter((m) => m.name.trim() !== '' || m.email.trim() !== '');
 }

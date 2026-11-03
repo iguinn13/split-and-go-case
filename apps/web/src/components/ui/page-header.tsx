@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-/** Page title pattern: optional back link, the single <h1>, an optional subtitle and actions. */
 export function PageHeader({
     title,
     description,

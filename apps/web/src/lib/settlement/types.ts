@@ -12,7 +12,6 @@ export interface TransferView {
 
 export interface SettlementPlan {
     groupId: string;
-    /** Group base currency. */
     currency: string;
     status: 'OPEN' | 'CLOSED';
     transferCount: number;

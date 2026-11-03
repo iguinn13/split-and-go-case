@@ -26,7 +26,6 @@ export interface AvatarProps {
     decorative?: boolean;
 }
 
-/** Circle with the person's initials and a colour that is stable for the same name. */
 export function Avatar({ name, size = 'md', className, decorative = false }: AvatarProps) {
     return (
         <span

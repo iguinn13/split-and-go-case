@@ -14,7 +14,6 @@ export interface Expense {
     currency: string;
     originalAmountMinor: number;
     exchangeRate: string;
-    /** Converted total, in the group's base currency. */
     amountMinor: number;
     paidByMemberId: string;
     splitType: SplitType;

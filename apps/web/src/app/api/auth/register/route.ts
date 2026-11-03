@@ -5,7 +5,6 @@ import { registerSchema } from '@/lib/auth/schemas';
 import { errorResponse, readJson, type AuthUser, type LoginResponse } from '@/lib/auth/route-utils';
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, sessionCookieOptions } from '@/lib/auth/session';
 
-/** Registers the user and signs them in right away (token goes to the httpOnly cookie). */
 export async function POST(request: Request) {
     const blocked = guardMutation(request);
 

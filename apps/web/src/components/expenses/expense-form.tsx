@@ -37,9 +37,7 @@ interface Props {
     baseCurrency: string;
     members: Member[];
     currencies: CurrencyOption[];
-    /** Member linked to the signed-in user: default payer. */
     currentMemberId: string | undefined;
-    /** Present when editing. */
     expense?: Expense;
 }
 
@@ -169,7 +167,6 @@ export function ExpenseForm({
         );
     }
 
-    // Selected members, in group order.
     const chosen = members.filter((m) => selected.includes(m.id));
     const draft: SplitDraft =
         splitType === 'EQUAL'

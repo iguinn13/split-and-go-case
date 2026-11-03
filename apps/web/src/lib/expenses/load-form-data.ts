@@ -12,7 +12,6 @@ export interface ExpenseFormData {
     expense?: Expense;
 }
 
-/** Server-side loader shared by the create and edit pages. Throws ApiError for non-404 failures. */
 export async function loadExpenseFormData(
     groupId: string,
     expenseId?: string,

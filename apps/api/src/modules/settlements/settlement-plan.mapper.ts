@@ -37,7 +37,6 @@ function toPlanView(
     };
 }
 
-/** Plan calculated on the fly (group OPEN): no ids, status or paidAt. */
 export function toOpenPlanView(
     group: { id: string; baseCurrency: string },
     plan: readonly Transfer[],

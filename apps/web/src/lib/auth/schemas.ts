@@ -32,7 +32,6 @@ export const loginSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 
-/** Maps a Zod error to `{ field: first message }`. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
     const result: Record<string, string> = {};
 

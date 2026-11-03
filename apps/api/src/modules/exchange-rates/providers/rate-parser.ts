@@ -7,7 +7,6 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export interface ParsedProviderPayload {
     /** Raw numeric token of `rates.<symbol>` exactly as sent (never a double). */
     token: string;
-    /** Top-level `date` (YYYY-MM-DD). */
     date: string;
 }
 

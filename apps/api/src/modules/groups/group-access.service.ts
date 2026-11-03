@@ -10,7 +10,6 @@ import { GroupsRepository, type GroupWithMembers } from './groups.repository.js'
 export class GroupAccessService {
     constructor(private readonly groups: GroupsRepository) {}
 
-    /** Owner or linked member can read. Returns the group with its members. */
     async assertCanRead(groupId: string, userId: string): Promise<GroupWithMembers> {
         const group = await this.groups.findWithMembers(groupId);
         const linked =

@@ -16,7 +16,6 @@ interface Props {
     groupId: string;
     ownerId: string;
     members: Member[];
-    /** The signed-in user owns the group. */
     isOwner: boolean;
     closed: boolean;
 }
