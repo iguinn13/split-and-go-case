@@ -65,19 +65,11 @@ describe('paidSummary', () => {
 });
 
 describe('transferStatusView', () => {
-  it('PAID is a check with text and green', () => {
-    expect(transferStatusView('PAID')).toEqual({
-      label: 'Paga',
-      icon: '✓',
-      className: 'text-emerald-800',
-    });
+  it('PAID is labelled "Paga" with the success tone', () => {
+    expect(transferStatusView('PAID')).toEqual({ label: 'Paga', variant: 'success' });
   });
 
-  it('PENDING has its own icon and text, not only a color', () => {
-    expect(transferStatusView('PENDING')).toEqual({
-      label: 'Pendente',
-      icon: '◷',
-      className: 'text-muted-foreground',
-    });
+  it('PENDING has its own text and tone, not only a color', () => {
+    expect(transferStatusView('PENDING')).toEqual({ label: 'Pendente', variant: 'warning' });
   });
 });

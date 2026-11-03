@@ -31,23 +31,26 @@ export function totalMovedLabel(totalMovedMinor: number, currency: string): stri
   return `Total movimentado: ${formatMoney(totalMovedMinor, currency)}`;
 }
 
+/** Number of transfers already marked as paid. */
+export function paidCount(transfers: Pick<TransferView, 'status'>[]): number {
+  return transfers.filter((t) => t.status === 'PAID').length;
+}
+
 /** "x de y pagas" summary of a closed group's transfers. */
 export function paidSummary(transfers: Pick<TransferView, 'status'>[]): string {
-  const paid = transfers.filter((t) => t.status === 'PAID').length;
-  return `${paid} de ${transfers.length} pagas`;
+  return `${paidCount(transfers)} de ${transfers.length} pagas`;
 }
 
 export interface TransferStatusView {
   /** Textual label: status is never conveyed by color alone. */
   label: string;
-  icon: string;
-  className: string;
+  /** Badge tone; the component adds an icon next to the label. */
+  variant: 'success' | 'warning';
 }
 
-/** Status indicator of a persisted transfer (icon + text + color). */
+/** Status indicator of a persisted transfer (icon + text + tone). */
 export function transferStatusView(status: TransferStatus): TransferStatusView {
-  if (status === 'PAID') {
-    return { label: 'Paga', icon: '✓', className: 'text-emerald-800' };
-  }
-  return { label: 'Pendente', icon: '◷', className: 'text-muted-foreground' };
+  return status === 'PAID'
+    ? { label: 'Paga', variant: 'success' }
+    : { label: 'Pendente', variant: 'warning' };
 }

@@ -135,23 +135,6 @@
   --spacing-page: 1rem;
 }
 
-/*
- * Legacy aliases (to be removed when the screens are redesigned in #53-#55). They map the old
- * names to the new tokens so screens that were not migrated yet keep rendering correctly.
- */
-@theme inline {
-  --color-brand-50: var(--accent);
-  --color-brand-600: var(--primary);
-  --color-brand-700: var(--link);
-  --color-surface: var(--card);
-  --color-page: var(--background);
-  --color-ink: var(--foreground);
-  --color-line: var(--input);
-  --color-danger-50: var(--destructive-soft);
-  --color-danger-700: var(--destructive-soft-foreground);
-  --radius-card: var(--radius);
-}
-
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

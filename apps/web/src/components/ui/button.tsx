@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /** Class names are exported so links can look like buttons: <Link className={buttonVariants()}>. */
@@ -25,8 +25,7 @@ export const buttonVariants = cva(
   },
 );
 
-export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+export interface ButtonProps extends ComponentProps<'button'>, VariantProps<typeof buttonVariants> {
   /** Shows a spinner, sets aria-busy and blocks clicks while keeping the label visible. */
   loading?: boolean;
   /** Decorative icon rendered before the label (use aria-label for icon-only buttons). */
