@@ -2,7 +2,7 @@
 
 Gestão e rateio inteligente de despesas em grupo. Lance os gastos de uma viagem, de uma república ou de um evento, divida cada um como quiser e receba o **menor número possível de transferências** para zerar todas as dívidas.
 
-> **Estado do projeto:** MVP implementado (API, interface web, testes automatizados e CI) e documentado. **Não implementado:** a publicação da aplicação (deploy, task #22); por isso **não há URL pública** e o produto só roda localmente. Veja [Limitações conhecidas e decisões pendentes](#limitações-conhecidas-e-decisões-pendentes).
+> **Estado do projeto:** MVP implementado (API, interface web, testes automatizados e CI) e documentado. **Publicado em <https://splitandgo.duckdns.org>** (VM própria com Docker Compose, task #22; ver [`docs/engineering/deployment.md`](docs/engineering/deployment.md)). Veja [Limitações conhecidas e decisões pendentes](#limitações-conhecidas-e-decisões-pendentes).
 
 ## Sumário
 
@@ -90,10 +90,10 @@ flowchart TB
         e["e2e<br/>Playwright contra o stack Docker Compose<br/>(projeto splitgo-e2e, portas 13000/13001/15432,<br/>fx-stub no lugar do Frankfurter)"]
     end
 
-    subgraph prod["Publicação (NÃO implementada, task #22)"]
-        d["sem ambiente publicado"]
+    subgraph prod["Publicação (VM Oracle, task #22)"]
+        d["nginx :80/:443 + certbot<br/>web · api · postgres (docker-compose.prod.yml)"]
     end
-    ci -.->|"deploy não existe"| prod
+    ci -.->|"deploy manual por script"| prod
 ```
 
 Os testes e2e usam `apps/web/e2e/docker-compose.e2e.yml`, que troca o provedor de câmbio real por um stub local (`fx-stub`), de modo que nenhum teste depende da internet.
@@ -155,7 +155,7 @@ Front-end em `apps/web` com shadcn/ui + Radix + Lucide sobre Tailwind v4.
 
 ## Demonstração
 
-A aplicação **não está publicada** (task #22 pendente); as capturas abaixo vêm da aplicação real rodando localmente com os dados do seed (`pnpm --filter @split-and-go/api db:seed`), todos fictícios. Cada tela existe em desktop (1280 px) e celular (360 px).
+A aplicação está publicada em <https://splitandgo.duckdns.org>; as capturas abaixo vêm da aplicação real rodando localmente com os dados do seed (`pnpm --filter @split-and-go/api db:seed`), todos fictícios. Cada tela existe em desktop (1280 px) e celular (360 px).
 
 **Credenciais do seed** (criadas por [`apps/api/prisma/seed.ts`](apps/api/prisma/seed.ts); uso exclusivo em ambiente local, nunca em produção):
 
@@ -290,7 +290,6 @@ O que **não** está implementado e o que ainda aguarda decisão humana. Os pont
 
 **Não implementado**
 
-- **Publicação (task #22):** sem deploy e sem URL pública. A hospedagem sugerida em [`docs/architecture/plan.md`](docs/architecture/plan.md) (seção 10) é apenas uma proposta.
 - **Logs estruturados com `requestId`:** proposto no plano, mas a API usa apenas o `Logger` padrão do Nest (ver `apps/api/src/common/errors/all-exceptions.filter.ts`).
 - **Pacote `packages/shared`:** declarado no workspace, sem código; web e API definem seus próprios schemas Zod.
 - Itens do [roadmap V2](#evolução-do-produto-v2): convites, notificações, Pix, OCR, recorrência e relatórios.
@@ -302,7 +301,7 @@ O que **não** está implementado e o que ainda aguarda decisão humana. Os pont
 | e | Entrada de valor no formulário web | **Resolvida (T-51), regra pendente de aprovação humana.** O campo guarda o texto digitado e o lê com a moeda selecionada: um único separador seguido de exatamente 3 dígitos (mais casas que a moeda) é milhar (`1.234` = 1234, com a dica "Lido como R$ 1.234,00"); seguido de 1 a N dígitos é decimal; JPY/KRW só aceitam separadores de milhar iguais; espaço só vale como milhar (`1 234`); só o símbolo da moeda selecionada é aceito. Casas a mais, ambiguidades, negativos, letras e espaços soltos mostram um aviso e desabilitam o Salvar. Regras completas em `docs/specs/03-expenses.md`. | `apps/web/src/lib/expenses/money-input.ts` |
 | i | Formatação do iene | A interface mostra `JP¥ 5.000`; AC-UI-10 diz `¥ 5.000`. | `apps/web/src/lib/money/format-money.ts`, `docs/specs/05-settlement-dashboard.md` |
 | j | Títulos de PR e escopos do commitlint | O escopo `exchange-rates` não está no `scope-enum`; por isso o título da T-23 usa o escopo `api` e o da T-16 foi encurtado para caber em 72 caracteres (backlog já atualizado). | `commitlint.config.mjs`, `docs/tasks/backlog.md` |
-| k | Deploy (task #22) | Pendente; ver acima. | `docs/tasks/backlog.md` (T-22) |
+| k | Deploy (task #22) | Publicado em VM própria; falta apenas o smoke test manual no navegador. | `docs/engineering/deployment.md` |
 
 ## Evolução do produto (V2)
 
@@ -325,7 +324,7 @@ O trabalho é planejado e acompanhado no board público **[GitHub Projects — S
 
 `Backlog → In Progress → In Review/Testing → Done`
 
-- Repositório: <https://github.com/iguinn13/split-and-go-case>. Aplicação publicada: **não existe** (task #22 pendente).
+- Repositório: <https://github.com/iguinn13/split-and-go-case>. Aplicação publicada: <https://splitandgo.duckdns.org>.
 - Cada task tem história de usuário e critérios de aceite ([`docs/tasks/backlog.md`](docs/tasks/backlog.md)).
 - **Commits semânticos** (Conventional Commits) ligados às issues (`Refs #n`); PRs com `Closes #n` e merge por squash ([`docs/engineering/git-workflow.md`](docs/engineering/git-workflow.md)).
 - **Desenvolvimento assistido por IA com revisão obrigatória:** três agentes (back-end, front-end e revisor de código) e o fluxo `/run-task <issue>` levam a task de Backlog até Done, com revisão contra os critérios de aceite ([`docs/ai/`](docs/ai/)).
