@@ -8,15 +8,21 @@ import { ExpensesRepository } from './expenses.repository.js';
 
 @Injectable()
 export class CreateExpenseUseCase {
-  constructor(
-    private readonly access: GroupAccessService,
-    private readonly expenses: ExpensesRepository,
-  ) {}
+    constructor(
+        private readonly access: GroupAccessService,
+        private readonly expenses: ExpensesRepository,
+    ) {}
 
-  async execute(userId: string, groupId: string, input: CreateExpenseInput): Promise<ExpenseView> {
-    const group = await this.access.assertCanRead(groupId, userId);
-    assertCanHaveExpenses(group);
-    const data = buildExpenseData(group, input);
-    return toExpenseView(await this.expenses.create(groupId, userId, data));
-  }
+    async execute(
+        userId: string,
+        groupId: string,
+        input: CreateExpenseInput,
+    ): Promise<ExpenseView> {
+        const group = await this.access.assertCanRead(groupId, userId);
+
+        assertCanHaveExpenses(group);
+        const data = buildExpenseData(group, input);
+
+        return toExpenseView(await this.expenses.create(groupId, userId, data));
+    }
 }

@@ -3,16 +3,17 @@
  * No I/O: balances come from `calculateBalances`, the plan from `simplifyDebts`.
  */
 import {
-  calculateBalances,
-  type BalanceExpense,
+    calculateBalances,
+    type BalanceExpense,
 } from '../balances/calculators/balance.calculator.js';
 import { simplifyDebts, type Transfer } from './debt-simplifier.js';
 
 /** Plan in the group base currency. Throws if the zero-sum invariant is violated (RN-BAL-02). */
 export function calculateSettlementPlan(
-  memberIds: readonly string[],
-  expenses: readonly BalanceExpense[],
+    memberIds: readonly string[],
+    expenses: readonly BalanceExpense[],
 ): Transfer[] {
-  const balances = calculateBalances(memberIds, expenses);
-  return simplifyDebts(balances.map(({ memberId, netMinor }) => ({ memberId, netMinor })));
+    const balances = calculateBalances(memberIds, expenses);
+
+    return simplifyDebts(balances.map(({ memberId, netMinor }) => ({ memberId, netMinor })));
 }

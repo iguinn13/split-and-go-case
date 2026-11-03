@@ -15,23 +15,23 @@ import { UsersRepository } from './users.repository.js';
 export const ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 
 @Module({
-  imports: [
-    JwtModule.registerAsync({
-      inject: [ENV],
-      useFactory: (env: Env) => ({
-        secret: env.JWT_SECRET,
-        signOptions: { expiresIn: ACCESS_TOKEN_TTL_SECONDS },
-      }),
-    }),
-  ],
-  controllers: [AuthController],
-  providers: [
-    UsersRepository,
-    PasswordService,
-    RegisterUseCase,
-    LoginUseCase,
-    GetMeUseCase,
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-  ],
+    imports: [
+        JwtModule.registerAsync({
+            inject: [ENV],
+            useFactory: (env: Env) => ({
+                secret: env.JWT_SECRET,
+                signOptions: { expiresIn: ACCESS_TOKEN_TTL_SECONDS },
+            }),
+        }),
+    ],
+    controllers: [AuthController],
+    providers: [
+        UsersRepository,
+        PasswordService,
+        RegisterUseCase,
+        LoginUseCase,
+        GetMeUseCase,
+        { provide: APP_GUARD, useClass: JwtAuthGuard },
+    ],
 })
 export class AuthModule {}

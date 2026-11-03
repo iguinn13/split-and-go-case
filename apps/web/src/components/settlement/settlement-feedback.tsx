@@ -10,45 +10,46 @@ import { applyFeedback } from '@/lib/settlement/feedback';
  * the change of its text is announced.
  */
 export function SettlementFeedback({
-  groupId,
-  summary,
-  children,
+    groupId,
+    summary,
+    children,
 }: {
-  groupId: string;
-  /** "x de y pagas" for a closed group with transfers, otherwise null. */
-  summary: string | null;
-  children: ReactNode;
+    groupId: string;
+    /** "x de y pagas" for a closed group with transfers, otherwise null. */
+    summary: string | null;
+    children: ReactNode;
 }) {
-  const targetRef = useRef<HTMLDivElement>(null);
-  const [message, setMessage] = useState('');
+    const targetRef = useRef<HTMLDivElement>(null);
+    const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    // Run after the dialog (if any) finished unmounting and restored focus elsewhere.
-    const frame = requestAnimationFrame(() => {
-      applyFeedback({
-        storage: window.sessionStorage,
-        groupId,
-        summary,
-        target: targetRef.current,
-        announce: setMessage,
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [groupId, summary, children]);
+    useEffect(() => {
+        // Run after the dialog (if any) finished unmounting and restored focus elsewhere.
+        const frame = requestAnimationFrame(() => {
+            applyFeedback({
+                storage: window.sessionStorage,
+                groupId,
+                summary,
+                target: targetRef.current,
+                announce: setMessage,
+            });
+        });
 
-  return (
-    <>
-      <div
-        ref={targetRef}
-        tabIndex={-1}
-        data-testid="settlement-summary"
-        className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        {children}
-      </div>
-      <p role="status" className="sr-only" data-testid="settlement-announcement">
-        {message}
-      </p>
-    </>
-  );
+        return () => cancelAnimationFrame(frame);
+    }, [groupId, summary, children]);
+
+    return (
+        <>
+            <div
+                ref={targetRef}
+                tabIndex={-1}
+                data-testid="settlement-summary"
+                className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+                {children}
+            </div>
+            <p role="status" className="sr-only" data-testid="settlement-announcement">
+                {message}
+            </p>
+        </>
+    );
 }

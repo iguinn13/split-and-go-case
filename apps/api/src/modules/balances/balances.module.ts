@@ -6,8 +6,8 @@ import { GetBalancesUseCase } from './get-balances.use-case.js';
 import { GetStatementUseCase } from './get-statement.use-case.js';
 
 @Module({
-  imports: [GroupsModule, ExpensesModule],
-  controllers: [BalancesController],
-  providers: [GetBalancesUseCase, GetStatementUseCase],
+    imports: [GroupsModule, ExpensesModule],
+    controllers: [BalancesController],
+    providers: [GetBalancesUseCase, GetStatementUseCase],
 })
 export class BalancesModule {}

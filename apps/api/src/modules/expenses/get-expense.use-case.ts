@@ -7,15 +7,17 @@ import { ExpensesRepository } from './expenses.repository.js';
 
 @Injectable()
 export class GetExpenseUseCase {
-  constructor(
-    private readonly access: GroupAccessService,
-    private readonly expenses: ExpensesRepository,
-  ) {}
+    constructor(
+        private readonly access: GroupAccessService,
+        private readonly expenses: ExpensesRepository,
+    ) {}
 
-  async execute(userId: string, groupId: string, expenseId: string): Promise<ExpenseView> {
-    await this.access.assertCanRead(groupId, userId);
-    const expense = await this.expenses.findInGroup(groupId, expenseId);
-    if (!expense) throw new AppError('EXPENSE_NOT_FOUND', 404, 'Expense not found');
-    return toExpenseView(expense);
-  }
+    async execute(userId: string, groupId: string, expenseId: string): Promise<ExpenseView> {
+        await this.access.assertCanRead(groupId, userId);
+        const expense = await this.expenses.findInGroup(groupId, expenseId);
+
+        if (!expense) throw new AppError('EXPENSE_NOT_FOUND', 404, 'Expense not found');
+
+        return toExpenseView(expense);
+    }
 }

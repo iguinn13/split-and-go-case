@@ -1,20 +1,20 @@
 # Test-only override: replaces the real exchange rate provider with a local stub.
 # Usage: docker compose -f docker-compose.yml -f apps/web/e2e/docker-compose.e2e.yml up
 services:
-  fx-stub:
-    image: node:24-alpine
-    command: ['node', '/app/server.mjs']
-    volumes:
-      - ./apps/web/e2e/fx-stub/server.mjs:/app/server.mjs:ro
-    healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4010/health']
-      interval: 2s
-      timeout: 3s
-      retries: 15
+    fx-stub:
+        image: node:24-alpine
+        command: ['node', '/app/server.mjs']
+        volumes:
+            - ./apps/web/e2e/fx-stub/server.mjs:/app/server.mjs:ro
+        healthcheck:
+            test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4010/health']
+            interval: 2s
+            timeout: 3s
+            retries: 15
 
-  api:
-    environment:
-      FX_PROVIDER_URL: http://fx-stub:4010/v1
-    depends_on:
-      fx-stub:
-        condition: service_healthy
+    api:
+        environment:
+            FX_PROVIDER_URL: http://fx-stub:4010/v1
+        depends_on:
+            fx-stub:
+                condition: service_healthy

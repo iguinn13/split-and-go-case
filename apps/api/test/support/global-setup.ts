@@ -7,10 +7,11 @@ import { resolveTestDatabaseUrl } from './test-database.js';
  * The URL is validated first (see test-database.ts), so migrations never reach another database.
  */
 export default function setup(): void {
-  const url = resolveTestDatabaseUrl(process.env);
-  execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
-    cwd: import.meta.dirname + '/../..',
-    env: { ...process.env, DATABASE_URL: url },
-    stdio: 'pipe',
-  });
+    const url = resolveTestDatabaseUrl(process.env);
+
+    execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
+        cwd: import.meta.dirname + '/../..',
+        env: { ...process.env, DATABASE_URL: url },
+        stdio: 'pipe',
+    });
 }

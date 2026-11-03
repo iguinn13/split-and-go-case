@@ -3,8 +3,8 @@ import { CURRENCIES, type Currency } from '../../common/money/currencies.js';
 
 @Controller('currencies')
 export class CurrenciesController {
-  @Get()
-  list(): Currency[] {
-    return CURRENCIES.map(({ code, name, minorUnits }) => ({ code, name, minorUnits }));
-  }
+    @Get()
+    list(): Currency[] {
+        return CURRENCIES.map(({ code, name, minorUnits }) => ({ code, name, minorUnits }));
+    }
 }

@@ -6,15 +6,15 @@ import type { Env } from '../config/env.schema.js';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  constructor(@Inject(ENV) env: Env) {
-    super({ adapter: new PrismaPg({ connectionString: env.DATABASE_URL }) });
-  }
+    constructor(@Inject(ENV) env: Env) {
+        super({ adapter: new PrismaPg({ connectionString: env.DATABASE_URL }) });
+    }
 
-  async onModuleInit(): Promise<void> {
-    await this.$connect();
-  }
+    async onModuleInit(): Promise<void> {
+        await this.$connect();
+    }
 
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
-  }
+    async onModuleDestroy(): Promise<void> {
+        await this.$disconnect();
+    }
 }

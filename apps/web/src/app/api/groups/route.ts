@@ -7,25 +7,32 @@ import { requireToken, unauthorized } from '@/lib/groups/route-helpers';
 import type { Group } from '@/lib/groups/types';
 
 export async function POST(request: Request) {
-  const blocked = guardMutation(request);
-  if (blocked) return blocked;
-  const token = await requireToken();
-  if (!token) return unauthorized();
-  const parsed = createGroupFormSchema.safeParse(await readJson(request));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'Verifique os dados informados.' },
-      { status: 422 },
-    );
-  }
-  try {
-    const group = await apiFetch<Group>('/groups', {
-      method: 'POST',
-      token,
-      body: toCreateGroupPayload(parsed.data),
-    });
-    return NextResponse.json({ id: group.id }, { status: 201 });
-  } catch (error) {
-    return errorResponse(error);
-  }
+    const blocked = guardMutation(request);
+
+    if (blocked) return blocked;
+
+    const token = await requireToken();
+
+    if (!token) return unauthorized();
+
+    const parsed = createGroupFormSchema.safeParse(await readJson(request));
+
+    if (!parsed.success) {
+        return NextResponse.json(
+            { code: 'VALIDATION_ERROR', message: 'Verifique os dados informados.' },
+            { status: 422 },
+        );
+    }
+
+    try {
+        const group = await apiFetch<Group>('/groups', {
+            method: 'POST',
+            token,
+            body: toCreateGroupPayload(parsed.data),
+        });
+
+        return NextResponse.json({ id: group.id }, { status: 201 });
+    } catch (error) {
+        return errorResponse(error);
+    }
 }

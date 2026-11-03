@@ -7,14 +7,14 @@ import { GetExchangeRateUseCase } from './get-exchange-rate.use-case.js';
 import { FrankfurterExchangeRateProvider } from './providers/frankfurter-exchange-rate.provider.js';
 
 @Module({
-  controllers: [ExchangeRatesController],
-  providers: [
-    {
-      provide: EXCHANGE_RATE_PROVIDER,
-      inject: [ENV],
-      useFactory: (env: Env) => new FrankfurterExchangeRateProvider(env.FX_PROVIDER_URL),
-    },
-    GetExchangeRateUseCase,
-  ],
+    controllers: [ExchangeRatesController],
+    providers: [
+        {
+            provide: EXCHANGE_RATE_PROVIDER,
+            inject: [ENV],
+            useFactory: (env: Env) => new FrankfurterExchangeRateProvider(env.FX_PROVIDER_URL),
+        },
+        GetExchangeRateUseCase,
+    ],
 })
 export class ExchangeRatesModule {}
