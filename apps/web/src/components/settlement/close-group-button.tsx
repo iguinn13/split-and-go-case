@@ -2,7 +2,7 @@
 
 import { Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +31,18 @@ export function CloseGroupButton({ groupId }: { groupId: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [refreshing, startTransition] = useTransition();
+
+  // If the refresh ends and this button is still here, it failed: do not stay on "Fechando...".
+  useEffect(() => {
+    if (!closedRef.current || refreshing || !busy) return;
+    closedRef.current = false;
+    guard.current = false;
+    setBusy(false);
+    setInfo(
+      'O grupo foi fechado, mas não foi possível atualizar a página. Recarregue para ver o plano.',
+    );
+  }, [refreshing, busy]);
 
   function onOpenChange(next: boolean) {
     // Never dismiss while the request is in flight.

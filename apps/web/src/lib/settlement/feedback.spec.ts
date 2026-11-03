@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   announcementFor,
+  EVENT_TTL_MS,
   applyFeedback,
   FEEDBACK_KEY,
   rememberEvent,
@@ -58,6 +59,28 @@ describe('rememberEvent / takeEvent', () => {
     };
     expect(() => rememberEvent(broken, { type: 'group-closed', groupId: 'g' })).not.toThrow();
     expect(takeEvent(broken, 'g')).toBeNull();
+  });
+});
+
+describe('event TTL', () => {
+  it('ignores and clears events older than the TTL', () => {
+    const storage = fakeStorage();
+    rememberEvent(storage, { type: 'group-closed', groupId: 'g1' }, 1_000);
+    expect(takeEvent(storage, 'g1', 1_000 + EVENT_TTL_MS + 1)).toBeNull();
+    expect(storage.data.has(FEEDBACK_KEY)).toBe(false);
+  });
+
+  it('accepts an event right inside the TTL', () => {
+    const storage = fakeStorage();
+    rememberEvent(storage, { type: 'group-closed', groupId: 'g1' }, 1_000);
+    expect(takeEvent(storage, 'g1', 1_000 + EVENT_TTL_MS)?.type).toBe('group-closed');
+  });
+
+  it('discards legacy payloads without a timestamp', () => {
+    const storage = fakeStorage({
+      [FEEDBACK_KEY]: JSON.stringify({ type: 'group-closed', groupId: 'g1' }),
+    });
+    expect(takeEvent(storage, 'g1')).toBeNull();
   });
 });
 

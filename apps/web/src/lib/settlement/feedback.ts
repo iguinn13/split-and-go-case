@@ -10,6 +10,9 @@ export type SettlementEvent =
   | { type: 'group-closed'; groupId: string }
   | { type: 'transfer-paid'; groupId: string; sentence: string };
 
+/** Events older than this are stale (e.g. a refresh that never happened) and are ignored. */
+export const EVENT_TTL_MS = 10_000;
+
 /** The subset of `Storage` used here (tests pass a fake). */
 export interface EventStorage {
   getItem(key: string): string | null;
@@ -28,12 +31,20 @@ function safely<T>(action: () => T): T | null {
   }
 }
 
-export function rememberEvent(storage: EventStorage, event: SettlementEvent): void {
-  safely(() => storage.setItem(FEEDBACK_KEY, JSON.stringify(event)));
+export function rememberEvent(
+  storage: EventStorage,
+  event: SettlementEvent,
+  now: number = Date.now(),
+): void {
+  safely(() => storage.setItem(FEEDBACK_KEY, JSON.stringify({ ...event, ts: now })));
 }
 
 /** Returns and clears the pending event of this group; events of other groups are kept. */
-export function takeEvent(storage: EventStorage, groupId: string): SettlementEvent | null {
+export function takeEvent(
+  storage: EventStorage,
+  groupId: string,
+  now: number = Date.now(),
+): SettlementEvent | null {
   const raw = safely(() => storage.getItem(FEEDBACK_KEY));
   if (!raw) return null;
   let parsed: unknown;
@@ -43,20 +54,31 @@ export function takeEvent(storage: EventStorage, groupId: string): SettlementEve
     safely(() => storage.removeItem(FEEDBACK_KEY));
     return null;
   }
-  const event = parsed as Partial<SettlementEvent> | null;
+  const event = parsed as (Partial<SettlementEvent> & { ts?: unknown }) | null;
   const valid =
     event !== null &&
     typeof event === 'object' &&
     typeof event.groupId === 'string' &&
+    typeof event.ts === 'number' &&
     (event.type === 'group-closed' ||
       (event.type === 'transfer-paid' && typeof event.sentence === 'string'));
   if (!valid) {
     safely(() => storage.removeItem(FEEDBACK_KEY));
     return null;
   }
+  if (now - (event.ts as number) > EVENT_TTL_MS) {
+    safely(() => storage.removeItem(FEEDBACK_KEY));
+    return null;
+  }
   if (event.groupId !== groupId) return null;
   safely(() => storage.removeItem(FEEDBACK_KEY));
-  return event as SettlementEvent;
+  return event.type === 'group-closed'
+    ? { type: 'group-closed', groupId: event.groupId }
+    : {
+        type: 'transfer-paid',
+        groupId: event.groupId,
+        sentence: (event as { sentence: string }).sentence,
+      };
 }
 
 /** Sentence read by screen readers; `summary` is the "x de y pagas" text when there is a plan. */
